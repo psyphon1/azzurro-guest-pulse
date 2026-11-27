@@ -30,7 +30,7 @@ data, with no sample banner). Setting the environment variable `REVIEWS_DB` over
 
 | Commit it | Never commit it |
 |---|---|
-| `data/sample/reviews_sample.db` (the snapshot) | `data/reviews.db` (the live collection) |
+| `data/sample/reviews_sample.db` (the snapshot) and `data/reviews.db` (the collection; committed on purpose for the submission) | demo or test databases |
 | `dashboard/`, `insights/`, `scraper/config.py` and the rest of the code | `.env`, `*.pem`, `cookies*.json` |
 | `dashboard/requirements.txt`, `.streamlit/config.toml` | `data/raw/` |
 

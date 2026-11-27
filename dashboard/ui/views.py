@@ -77,8 +77,54 @@ def render_header(db_path: Path, health: pd.DataFrame | None, no_data: dict, ski
     with left:
         st.title("Azzurro Hotels: guest review insights")
     label, warn = health_summary(health, no_data, all_count)
-    with right, st.popover(("⚠ " if warn else "✓ ") + label, use_container_width=True):
-        render_health_details(health, no_data, skipped, repeated)
+    with right:
+        with st.popover(("⚠ " if warn else "✓ ") + label, use_container_width=True):
+            render_health_details(health, no_data, skipped, repeated)
+        render_fetch(db_path)
+
+
+def _start_fetch(db_path: Path) -> None:
+    from dashboard.ui import collect
+    ok, msg = collect.start(db_path)
+    st.session_state["fetch_msg"] = (ok, msg)
+
+
+@st.fragment(run_every=5)
+def _fetch_progress() -> None:
+    """While a collection runs, check every 5 seconds; reload the whole page when it has finished."""
+    from dashboard.ui import collect
+    if collect.running():
+        st.caption(f"Fetching new reviews ({esc(collect.status().get('state', 'running'))}). "
+                   "A browser window opens; the page updates when it finishes.")
+        return
+    if st.session_state.pop("fetch_watching", False):
+        st.rerun()
+
+
+def render_fetch(db_path: Path) -> None:
+    """The "Fetch latest reviews" button (local installs only) and its progress."""
+    from dashboard.ui import collect
+    ok, why = collect.available(db_path)
+    if not ok:
+        st.button("Fetch latest reviews", key="fetch", disabled=True, help=why, use_container_width=True)
+        return
+    busy = collect.running() is not None
+    st.button("Fetch latest reviews", key="fetch", type="primary", disabled=busy, use_container_width=True,
+              on_click=_start_fetch, args=(db_path,),
+              help="Collects new Booking.com reviews for every hotel, adds them to the database and updates "
+                   "the topics. Takes a few minutes.")
+    msg = st.session_state.pop("fetch_msg", None)
+    if msg and not msg[0]:
+        st.caption(esc(msg[1]))
+    if busy or (msg and msg[0]):
+        st.session_state["fetch_watching"] = True
+        _fetch_progress()
+    else:
+        last = collect.status()
+        if last.get("state") == "done" and last.get("finished_at"):
+            st.caption(f"Last fetch finished {esc(D.to_sydney(last['finished_at']))}.")
+        elif last.get("state") == "failed":
+            st.caption(f"Last fetch failed: {esc(last.get('error', ''))}")
 
 
 def render_health_details(health: pd.DataFrame | None, no_data: dict, skipped: int,

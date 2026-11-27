@@ -12,12 +12,17 @@ __pycache__/
 # local data (sample data is committed on purpose, see data/sample_*)
 data/raw/
 data/*.db-journal
-# live scraped databases are never committed by accident; a deliberate sample lives in data/sample/
+# Databases: the collected data (data/reviews.db) and its snapshot (data/sample/reviews_sample.db) are committed on
+# purpose so the submitted repo runs on real data. They hold real public Booking.com review text. Other .db files
+# (demo data, test copies) stay out.
 data/*.db
+!data/reviews.db
 !data/sample/
-# The sample snapshot holds real public review text (it may include first names typed by reviewers), so it is
-# NOT committed by accident. Publishing it is a deliberate step: git add -f data/sample/reviews_sample.db (docs/deploy.md).
 data/sample/*.db
+!data/sample/reviews_sample.db
 .DS_Store
 data/demo.db
 data/audit_shots/
+data/.collect.lock
+data/.collect.status.json
+data/collect.log
