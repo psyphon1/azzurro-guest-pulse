@@ -149,8 +149,11 @@ def render_dashboard(db_path, bundle) -> None:
 
     # --- feed, health, help ---------------------------------------------------------------------------------
     chips = D.topic_chips(topics)
-    # After a fetch the feed shows the new reviews whatever period is picked (they may be older than "this week").
-    feed_source = df if ss.get("feed_new_only") else df_range
+    # Reviews added by the last fetch always join the feed (at the top), even when their date is outside the period.
+    from dashboard.ui import collect
+    fresh = collect.new_keys()
+    extra = df[df["review_key"].isin(fresh) & ~df["review_key"].isin(df_range["review_key"])]
+    feed_source = df if ss.get("feed_new_only") else (pd.concat([df_range, extra]) if len(extra) else df_range)
     V.render_feed(feed_source, chips, labels, topics_ready, set(sel_slugs), name_by_slug)
     V.render_health_table(health)
     V.render_howto()

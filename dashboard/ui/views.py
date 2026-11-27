@@ -523,6 +523,9 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
     out = D.filter_feed(data, chips, topic_choice=topic_choice or None, only_negative="Negative" in pills,
                         no_reply="Needs reply" in pills, search=search, sort=sort,
                         only_with_comment="Has comment" in pills)
+    if fresh and len(out):     # reviews just fetched go to the top of the list, newest of them first
+        is_new = out["review_key"].isin(fresh)
+        out = pd.concat([out[is_new], out[~is_new]])
     total = len(out)
     sig = (tuple(pills), topic_choice, search, sort, slug, len(df_range), bool(st.session_state.get("feed_new_only")))
     if st.session_state.get("feed_sig") != sig:
@@ -535,8 +538,10 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
         st.info("No reviews match these filters. Try clearing a filter.")
         return out
     n_text = int(D.with_comment_mask(out).sum())
-    st.caption(f"{total} review{'s' if total != 1 else ''} match ({n_text} with a comment). Page {page} of {pages}. "
-               "Reviewer names are never stored.")
+    n_new = int(out["review_key"].isin(fresh).sum()) if fresh else 0
+    new_txt = f" {n_new} new from the last fetch are at the top." if n_new else ""
+    st.caption(f"{total} review{'s' if total != 1 else ''} match ({n_text} with a comment). Page {page} of {pages}."
+               f"{new_txt} Reviewer names are never stored.")
     for r in out.iloc[(page - 1) * PAGE_SIZE: page * PAGE_SIZE].itertuples(index=False):
         html(review_row(r, chips.get(r.review_key, []), labels, r.review_key in fresh))
         with st.expander("Read full review"):
