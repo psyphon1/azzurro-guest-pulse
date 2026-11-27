@@ -457,27 +457,28 @@ def render_replies_and_safety(df: pd.DataFrame, df_range: pd.DataFrame, topics: 
     st.header("Replies & safety", anchor="replies")
     left, right = st.columns([1.6, 1])
     with left:
-        st.markdown("**Negative reviews and replies per week**", help="Bars: negative reviews each week, split into "
-                    "replied (green) and not replied (red, crossed). Line: reply rate. Dotted line: 90% target.")
-        w = D.reply_weekly(df, end, weeks=12)
-        if w["negatives"].sum() == 0:
-            st.caption("No negative reviews in the last 12 weeks.")
+        unit, w = D.reply_trend(df, start, end)
+        st.markdown(f"**Negative reviews and replies per {unit}**", help="Bars: negative reviews in the selected "
+                    "period, split into replied (green) and not replied (red, crossed). Line: reply rate. "
+                    "Dotted line: 90% target.")
+        if w.empty or w["negatives"].sum() == 0:
+            st.caption("No negative reviews in this period.")
         else:
-            w["label"] = w["week_start"].dt.strftime("%d %b")
             fig = make_subplots(specs=[[{"secondary_y": True}]])
             fig.add_bar(x=w["label"], y=w["replied"], name="Replied", marker_color=GOOD,
-                        hovertemplate="Week of %{x}: %{y} replied<extra></extra>")
+                        hovertemplate="%{x}: %{y} replied<extra></extra>")
             fig.add_bar(x=w["label"], y=w["unreplied"], name="No reply",
                         marker=dict(color=BAD, pattern=dict(shape="x", fillmode="overlay",
                                                             fgcolor="rgba(255,255,255,.6)", solidity=0.25)),
                         text=w["unreplied"].where(w["unreplied"] > 0, None), textposition="inside",
-                        hovertemplate="Week of %{x}: %{y} without a reply<extra></extra>")
+                        hovertemplate="%{x}: %{y} without a reply<extra></extra>")
             fig.add_scatter(x=w["label"], y=w["rate"], mode="lines+markers", line=dict(color=TEAL, width=2),
                             connectgaps=False, secondary_y=True, hovertemplate="Reply rate %{y}%<extra></extra>")
             fig.add_hline(y=90, line_dash="dot", line_color=MUTED, secondary_y=True)
             fig.update_layout(barmode="stack")
             fig.update_xaxes(type="category")
-            fig.update_yaxes(title_text="Negative reviews", secondary_y=False)
+            fig.update_yaxes(title_text="Negative reviews", rangemode="tozero", tickformat="d",
+                             dtick=1 if w["negatives"].max() <= 6 else None, secondary_y=False)
             fig.update_yaxes(range=[0, 105], tickvals=[0, 25, 50, 75, 100], title_text="Reply rate %", showgrid=False,
                              secondary_y=True)
             st.plotly_chart(plotly_layout(fig), width="stretch", key="replies_week")
@@ -499,22 +500,20 @@ def render_replies_and_safety(df: pd.DataFrame, df_range: pd.DataFrame, topics: 
             fig.add_vline(x=90, line_dash="dot", line_color=MUTED)
             fig.update_xaxes(range=[0, 140], visible=False)
             st.plotly_chart(plotly_layout(fig, 60 + 44 * len(h)), width="stretch", key="replies_hotel")
-    st.markdown("**Safety issues per month**", help="Reviews that mention pests, mould, fire or electrical risk, "
-                "or theft, per month and hotel (last 12 months).")
-    m = D.safety_monthly(df, topics, end, months=12)
-    if m.empty:
-        st.caption("No safety issues mentioned in the last 12 months.")
+    unit, m = D.safety_trend(df, topics, start, end)
+    st.markdown(f"**Safety issues per {unit}**", help="Reviews in the selected period that mention pests, mould, "
+                "fire or electrical risk, or theft, per hotel.")
+    if m.empty or m.to_numpy().sum() == 0:
+        st.caption("No safety issues mentioned in this period.")
         return
-    months = pd.period_range(end=pd.Timestamp(end).to_period("M"), periods=12, freq="M").to_timestamp()
     fig = go.Figure()
-    for i, (name, g) in enumerate(m.groupby("property_name")):
-        series = g.set_index("month")["count"].reindex(months, fill_value=0)
-        fig.add_bar(x=[d.strftime("%b %Y") for d in months], y=series.values, name=name,
+    for i, name in enumerate(m.columns):
+        fig.add_bar(x=list(m.index), y=m[name].values, name=name,
                     marker_color=HOTEL_COLOURS[i % len(HOTEL_COLOURS)],
                     hovertemplate=f"{esc(name)}<br>%{{x}}: %{{y}} reviews<extra></extra>")
     fig.update_layout(barmode="stack", showlegend=True, legend=dict(orientation="h", y=1.12, x=0))
     fig.update_xaxes(type="category")
-    fig.update_yaxes(title_text="Reviews", dtick=1)
+    fig.update_yaxes(title_text="Reviews", tickformat="d", dtick=1 if m.sum(axis=1).max() <= 6 else None)
     fig = plotly_layout(fig, 300)
     fig.update_layout(showlegend=True)
     st.plotly_chart(fig, width="stretch", key="safety_month")

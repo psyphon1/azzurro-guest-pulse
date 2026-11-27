@@ -41,12 +41,28 @@ def test_topic_impact_compares_reviews_with_and_without_the_complaint():
     assert list(D.topic_impact(_df(ROWS), TOPICS, LABELS)["topic"])[0] == "cleanliness"   # biggest cost first
 
 
-def test_reply_weekly_counts_negative_reviews_and_replies():
-    w = D.reply_weekly(_df(ROWS), date(2026, 11, 15), weeks=2).set_index("week_start")
+def test_trend_bins_follow_the_period_length():
+    unit, bins = D.trend_bins(date(2026, 11, 23), date(2026, 11, 28))           # this week so far: days
+    assert unit == "day" and len(bins) == 6 and bins[0][2] == "Mon 23 Nov"
+    unit, bins = D.trend_bins(date(2026, 10, 30), date(2026, 11, 28))           # 30 days: weeks, clipped
+    assert unit == "week" and len(bins) == 5 and bins[0][0] == date(2026, 10, 30)
+    unit, bins = D.trend_bins(date(2026, 9, 3), date(2026, 11, 28))             # custom ~3 months: weeks
+    assert unit == "week" and bins[0][0] == date(2026, 9, 3) and bins[-1][1] == date(2026, 11, 28)
+    unit, bins = D.trend_bins(date(2025, 11, 10), date(2026, 11, 28))           # all time: months, clipped
+    assert unit == "month" and bins[0][0] == date(2025, 11, 10) and bins[-1] == (date(2026, 11, 1),
+                                                                                date(2026, 11, 28), "Nov 2026")
+
+
+def test_reply_trend_counts_negative_reviews_and_replies_inside_the_period_only():
+    unit, w = D.reply_trend(_df(ROWS), date(2026, 11, 2), date(2026, 11, 15))
+    assert unit == "day" and len(w) == 14 and w["negatives"].sum() == 3 and w["replied"].sum() == 1
+    unit, w = D.reply_trend(_df(ROWS), date(2026, 9, 28), date(2026, 11, 15))
+    w = w.set_index("start")
     first, second = w.loc[pd.Timestamp("2026-11-02")], w.loc[pd.Timestamp("2026-11-09")]
-    assert (first["negatives"], first["replied"], first["unreplied"]) == (2, 1, 1)
-    assert first["rate"] == 50
-    assert (second["negatives"], second["replied"]) == (1, 0)
+    assert unit == "week" and (first["negatives"], first["replied"], first["unreplied"]) == (2, 1, 1)
+    assert first["rate"] == 50 and (second["negatives"], second["replied"]) == (1, 0)
+    _, only_first_week = D.reply_trend(_df(ROWS), date(2026, 11, 2), date(2026, 11, 8))
+    assert only_first_week["negatives"].sum() == 2
 
 
 def test_reply_by_hotel():
@@ -64,7 +80,10 @@ def test_segment_scores_by_traveller_and_room_type():
     assert D.segment_scores(_df(ROWS), "room_type", min_n=10).empty
 
 
-def test_safety_monthly():
-    m = D.safety_monthly(_df(ROWS), TOPICS, date(2026, 11, 30), months=3)
-    got = {(r.month.strftime("%Y-%m"), r.property_name): r["count"] for _, r in m.iterrows()}
-    assert got == {("2026-11", "Hotel A"): 1, ("2026-10", "Hotel B"): 1}
+def test_safety_trend_follows_the_period():
+    unit, m = D.safety_trend(_df(ROWS), TOPICS, date(2026, 1, 1), date(2026, 11, 30))
+    assert unit == "month" and m.loc["Nov 2026", "Hotel A"] == 1 and m.loc["Oct 2026", "Hotel B"] == 1
+    unit, m = D.safety_trend(_df(ROWS), TOPICS, date(2026, 11, 1), date(2026, 11, 30))   # October left out
+    assert unit == "week" and list(m.columns) == ["Hotel A"] and m.to_numpy().sum() == 1
+    _, none = D.safety_trend(_df(ROWS), TOPICS, date(2026, 11, 20), date(2026, 11, 28))
+    assert none.to_numpy().sum() == 0

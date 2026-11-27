@@ -639,18 +639,42 @@ def topic_impact(df: pd.DataFrame, topics: pd.DataFrame, labels: dict[str, str])
     return out.sort_values(["delta", "n"], ascending=[True, False], kind="stable").reset_index(drop=True)
 
 
-def reply_weekly(df: pd.DataFrame, end: date, weeks: int = 12) -> pd.DataFrame:
-    """Negative reviews per Monday-Sunday week (the last `weeks` weeks up to `end`) and how many got a reply."""
-    first = monday_of(end) - timedelta(weeks=weeks - 1)
+def trend_bins(start: date, end: date) -> tuple[str, list[tuple[date, date, str]]]:
+    """Split the selected period into chart bars: days for up to two weeks, weeks for up to half a year, months
+    beyond. Every bar is clipped to the period, so the bars add up to exactly the reviews in the period."""
+    days = (end - start).days + 1
+    bins: list[tuple[date, date, str]] = []
+    if days <= 14:
+        d = start
+        while d <= end:
+            bins.append((d, d, d.strftime("%a %d %b") if days <= 7 else d.strftime("%d %b")))
+            d += timedelta(days=1)
+        return "day", bins
+    if days <= 183:
+        w = monday_of(start)
+        while w <= end:
+            bins.append((max(w, start), min(w + timedelta(days=6), end), max(w, start).strftime("%d %b")))
+            w += timedelta(weeks=1)
+        return "week", bins
+    m = date(start.year, start.month, 1)
+    while m <= end:
+        nxt = date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+        bins.append((max(m, start), min(nxt - timedelta(days=1), end), m.strftime("%b %Y")))
+        m = nxt
+    return "month", bins
+
+
+def reply_trend(df: pd.DataFrame, start: date, end: date) -> tuple[str, pd.DataFrame]:
+    """Negative reviews per bar of the selected period (see trend_bins) and how many got a hotel reply."""
+    unit, bins = trend_bins(start, end)
     out = []
-    for i in range(weeks):
-        w = first + timedelta(weeks=i)
-        neg = _window(df, w, w + timedelta(days=6))
+    for lo, hi, label in bins:
+        neg = _window(df, lo, hi)
         neg = neg[neg["band"] == "negative"]
         n, r = len(neg), int(neg["has_reply"].sum())
-        out.append({"week_start": pd.Timestamp(w), "negatives": n, "replied": r, "unreplied": n - r,
+        out.append({"start": pd.Timestamp(lo), "label": label, "negatives": n, "replied": r, "unreplied": n - r,
                     "rate": round(100 * r / n) if n else None})
-    return pd.DataFrame(out)
+    return unit, pd.DataFrame(out)
 
 
 def reply_by_hotel(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
@@ -681,16 +705,18 @@ def segment_scores(df: pd.DataFrame, column: str, min_n: int = SMALL_SAMPLE, top
     return out.sort_values(["avg", "n"], ascending=[True, False], kind="stable").reset_index(drop=True)
 
 
-def safety_monthly(df: pd.DataFrame, topics: pd.DataFrame, end: date, months: int = 12) -> pd.DataFrame:
-    """Reviews with a safety complaint per calendar month and hotel, for the `months` months up to `end`."""
-    cols = ["month", "property_name", "count"]
+def safety_trend(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date) -> tuple[str, pd.DataFrame]:
+    """Reviews with a safety complaint per bar of the selected period (see trend_bins), one column per hotel.
+    Returns the bar unit and a frame indexed by bar label (every bar present, zeros included)."""
+    unit, bins = trend_bins(start, end)
+    labels = [b[2] for b in bins]
     if df is None or df.empty or topics is None or len(topics) == 0:
-        return pd.DataFrame(columns=cols)
+        return unit, pd.DataFrame(index=labels)
     keys = set(topics.loc[(topics["topic"] == "safety") & (topics["polarity"] == "negative"), "review_key"])
-    first = (pd.Timestamp(end).to_period("M") - (months - 1)).to_timestamp()
-    hit = df[df["review_key"].isin(keys) & (df["review_date"] >= first) & (df["review_date"] <= pd.Timestamp(end))]
-    if hit.empty:
-        return pd.DataFrame(columns=cols)
-    g = hit.assign(month=hit["review_date"].dt.to_period("M").dt.to_timestamp()) \
-        .groupby(["month", "property_name"]).size().reset_index(name="count")
-    return g[cols]
+    hit = df[df["review_key"].isin(keys)]
+    table = {}
+    for lo, hi, label in bins:
+        w = _window(hit, lo, hi)
+        table[label] = w.groupby("property_name").size().to_dict()
+    out = pd.DataFrame.from_dict(table, orient="index").reindex(labels).fillna(0).astype(int)
+    return unit, out.loc[:, out.sum() > 0] if len(out.columns) else out
