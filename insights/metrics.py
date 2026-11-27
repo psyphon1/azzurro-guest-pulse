@@ -516,8 +516,12 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
     # Older databases lack the newer ledger columns (added together). Two literal queries, never built from text.
     have_cols = set(_read(db_path, "SELECT * FROM scrape_runs LIMIT 0", []).columns)
     if {"stop_reason", "since_days"} <= have_cols:
+        # Coverage comes from the latest successful run that read history, not from a short "latest only" fetch
+        # that stopped at reviews already stored (stop_reason no_new_reviews): that one says nothing about how far
+        # back the stored history goes. Freshness (last_ok_at) still uses the latest run of any kind.
         cover = _read(db_path, "SELECT property, truncated, reported_total, stop_reason, since_days FROM scrape_runs "
-                               "WHERE id IN (SELECT MAX(id) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
+                               "WHERE id IN (SELECT COALESCE(MAX(CASE WHEN COALESCE(stop_reason, '') <> 'no_new_reviews' "
+                               "THEN id END), MAX(id)) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
                       ["property", "truncated", "reported_total", "stop_reason", "since_days"])
     else:
         cover = _read(db_path, "SELECT property, truncated, reported_total FROM scrape_runs "

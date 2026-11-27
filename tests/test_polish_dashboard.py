@@ -85,3 +85,27 @@ def test_presets_from_worth_a_look_are_validated():
 ])
 def test_profanity_mask(text, expected):
     assert mask_profanity(text) == expected
+
+
+def test_a_latest_only_fetch_does_not_hide_partial_history(tmp_path):
+    """Regression: a short incremental fetch that stopped at already-stored reviews made data_health say
+    "All reviews Booking.com shows" for a hotel whose older history was never collected."""
+    import sqlite3
+    from insights import metrics
+    from scraper.store import ReviewStore
+    db = str(tmp_path / "r.db")
+    ReviewStore(db).close() if hasattr(ReviewStore(db), "close") else None
+    con = sqlite3.connect(db)
+    con.execute("INSERT INTO scrape_runs (property, mode, started_at, finished_at, status, pages, new, updated, rejected,"
+                " truncated, reported_total, max_pages, stop_reason) VALUES "
+                "('venus-potts-point-sydney','full','2026-11-27T15:01:50+00:00','2026-11-27T15:11:24+00:00','ok',144,1440,0,0,"
+                " 1, 2386, 200, 'ended_early')")
+    con.execute("INSERT INTO scrape_runs (property, mode, started_at, finished_at, status, pages, new, updated, rejected,"
+                " truncated, reported_total, max_pages, stop_reason) VALUES "
+                "('venus-potts-point-sydney','incremental','2026-11-27T18:54:26+00:00','2026-11-27T18:55:00+00:00','ok',1,1,0,0,"
+                " 0, 2387, 20, 'no_new_reviews')")
+    con.commit(); con.close()
+    h = metrics.data_health(db)
+    row = h[h["property"] == "venus-potts-point-sydney"].iloc[0]
+    assert row["coverage_note"], "partial history must still be explained"
+    assert str(row["last_ok_at"]).startswith("2026-11-27 18:55")      # freshness still comes from the latest run
