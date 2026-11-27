@@ -1,7 +1,7 @@
 """Fixed topic taxonomy for review classification. Bump TAXONOMY_VERSION whenever keywords change."""
 from dataclasses import dataclass
 
-TAXONOMY_VERSION = "2"   # 2: added "safety" (safety and pests)
+TAXONOMY_VERSION = "3"   # 2: added "safety"; 3: five more languages, safety words, meal words out
 
 
 @dataclass(frozen=True)
@@ -16,8 +16,11 @@ class Topic:
 # the door' are not location / check-in mentions.
 _TOPIC_LIST = [
     Topic("safety", "Safety & pests", (
-        "cockroach", "cockroaches", "roach", "roaches", "bed bug", "bed bugs", "bedbug", "bedbugs", "mould", "mold",
-        "mouldy", "moldy", "rat", "rats", "fire", "electrical", "theft", "stolen", "unsafe",
+        "cockroach", "cockroaches", "roach", "roaches", "bed bug", "bed bugs", "bedbug", "bedbugs", "mould",
+        "mold", "mouldy", "moldy", "black mould", "black mold", "rat", "rats", "mice", "fire", "fire hazard",
+        "fire risk", "caught fire", "electrical", "exposed wires", "exposed wiring", "electric shock", "sparks",
+        "theft", "stolen", "robbed", "thief", "thieves", "unsafe", "not safe", "dangerous", "assault",
+        "assaulted", "harassed", "harassment",
     )),
     Topic("cleanliness", "Cleanliness", (
         "clean", "unclean", "dirty", "dirt", "filthy", "grubby", "grime", "grimy", "stain", "stained",
@@ -55,7 +58,8 @@ _TOPIC_LIST = [
         "utensils", "cutlery", "crockery", "equipped", "hairdryer", "hair dryer", "iron", "lounge",
         "lobby",
         # meals, and bathroom amenities/availability (a count of toilets is a facility, a broken one is a room fault)
-        "breakfast", "lunch", "dinner", "meal", "meals", "food", "restroom", "restrooms", "mirror",
+        # "dinner"/"lunch"/"food" are left out: a free dinner is a perk or an event, not a facility.
+        "breakfast", "restroom", "restrooms", "mirror",
         "enough bathroom", "enough bathrooms", "enough toilet", "enough toilets", "enough shower", "enough showers",
     )),
     Topic("location", "Location", (
@@ -85,7 +89,21 @@ TOPICS: dict[str, Topic] = {t.id: t for t in _TOPIC_LIST}
 # Keywords that name a PROBLEM ("dirty", "noisy", "rude"). Negating one of these ("not dirty") is good
 # news. Every other keyword is neutral or praise ("clean", "kettle"): negating it ("not clean",
 # "no kettle") is bad news. Keep in sync with the keyword lists above.
-PROBLEM_KEYWORDS = frozenset({
+# Safety words. All of them name a problem, and a safety tag is only ever a complaint (see insights.classify).
+SAFETY_KEYWORDS = frozenset(_TOPIC_LIST[0].keywords)
+
+# Phrases removed before matching, so "fire exit" is not a fire and "stole the show" is not a theft.
+SAFE_PHRASES = (
+    "fire exit", "fire exits", "fire escape", "fire alarm", "fire alarms", "fire door", "fire doors",
+    "fire place", "fire extinguisher", "fire extinguishers", "fire drill", "on fire", "stole the show",
+    "electrical adaptor", "electrical adapter", "electrical outlet", "electrical outlets", "electrical socket",
+    "electrical sockets",
+)
+
+# Keywords that only count in the "disliked" box: "I liked the window opened" is not praise for the room.
+COMPLAINT_ONLY = frozenset({"window", "windows"})
+
+PROBLEM_KEYWORDS = SAFETY_KEYWORDS | frozenset({
     "unclean", "dirty", "dirt", "filthy", "grubby", "grime", "grimy", "stain", "stained", "smell", "smelly",
     "smelt", "stink", "stinks", "stinky", "odour", "odor", "sewerage", "sewage", "hair", "hairs", "mould",
     "mold", "mouldy", "moldy", "dust", "dusty", "cockroach", "cockroaches", "roach", "roaches", "bug",

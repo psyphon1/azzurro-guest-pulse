@@ -137,3 +137,9 @@ and the sections above disagree, this list is current.
   dates, ratings and counts range-checked). `host_reply` is NULL when blank after cleaning.
 - The dashboard masks e-mail addresses and phone numbers in review text, hover text, error text and the CSV, and caps
   CSV export at 50,000 rows (`feed_to_csv_limited`).
+- Polish pass: a ninth topic `safety` ("Safety & pests"), complaint-only. `TAXONOMY_VERSION = "3"`. Keyword lexicons for
+  fr/es/de/it/pt in `insights/lexicons.py`; `insights.language.analysis_language(code, *texts)` picks the lexicon or
+  None (not analysed). `classify_review(liked, disliked, language="en")`. `insights.classify.is_low_signal(text)`.
+  `CommentCounts.n_not_analysed`. `Insight.action` (dict of feed filters: safety, neg, noreply, text, topic, property);
+  a safety insight is always first. Extension point: `insights.classify.TopicClassifier` (interface only) and
+  `classify_all(db, classifier=...)`.

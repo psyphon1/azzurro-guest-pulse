@@ -130,15 +130,27 @@ def test_cli_prints_one_line_summary(db_path, store, capsys):
 FRENCH = "La chambre etait sale et le wifi ne marchait pas, la location est loin de tout."
 
 
-def test_non_english_review_gets_no_tags_and_is_remembered(db_path, store):
+JAPANESE = "部屋が汚くて、wifiも使えなかった。location"
+
+
+def test_french_review_is_tagged_with_the_french_keywords(db_path, store):
     store.upsert_reviews([make_review("fr1", liked=None, disliked=FRENCH, language="fr"), make_review("en1")])
 
     first = classify_all(db_path)
 
     assert first.reviews_classified == 2
-    assert tags(db_path, "fr1") == []
+    got = {(t[1], t[2]) for t in tags(db_path, "fr1")}
+    assert ("cleanliness", "negative") in got and ("facilities", "negative") in got
+    assert ("location", "negative") not in got            # "location" means renting in French: not a keyword there
     assert [t[1] for t in tags(db_path, "en1")] == ["cleanliness", "location"]
     assert classify_all(db_path) == ClassifyResult(2, 0, 2, 0)          # not re-run
+
+
+def test_unsupported_language_gets_no_tags_and_is_remembered(db_path, store):
+    store.upsert_reviews([make_review("ja1", liked=None, disliked=JAPANESE, language="ja")])
+    assert classify_all(db_path).reviews_classified == 1
+    assert tags(db_path, "ja1") == []
+    assert classify_all(db_path).reviews_skipped == 1
 
 
 def test_xu_english_text_is_tagged_but_xt_chinese_is_not(db_path, store):
@@ -161,13 +173,13 @@ def test_missing_language_is_judged_by_text(db_path, store):
     assert tags(db_path, "n2") == []
 
 
-def test_classifier_revision_bump_removes_tags_given_to_non_english_reviews(db_path, store, monkeypatch):
-    store.upsert_reviews([make_review("fr1", liked=None, disliked=FRENCH, language="fr")])
+def test_classifier_revision_bump_removes_tags_given_to_unsupported_languages(db_path, store, monkeypatch):
+    store.upsert_reviews([make_review("fr1", liked=None, disliked=JAPANESE, language="ja")])
     # Simulate the old behaviour: a tag written under the previous classifier revision.
     real = pipeline.classify_review
-    monkeypatch.setattr(pipeline, "classify_review", lambda liked, disliked: real("Great location.", None))
+    monkeypatch.setattr(pipeline, "classify_review", lambda liked, disliked, language=None: real("Great location.", None))
     monkeypatch.setattr(pipeline, "CLASSIFIER_REVISION", "old")
-    monkeypatch.setattr(pipeline, "is_english_like", lambda *a: True)
+    monkeypatch.setattr(pipeline, "analysis_language", lambda *a: "en")
     classify_all(db_path)
     assert len(tags(db_path, "fr1")) == 1
 
@@ -181,3 +193,17 @@ def test_classifier_revision_bump_removes_tags_given_to_non_english_reviews(db_p
 def test_classifier_revision_is_bumped_for_the_language_gate():
     from insights.classify import CLASSIFIER_REVISION
     assert int(CLASSIFIER_REVISION) >= 4
+
+
+def test_pipeline_accepts_another_classifier_and_records_its_method(db_path, store):
+    from insights.classify import TopicTag
+
+    class Fixed:
+        method = "other"
+
+        def classify(self, liked, disliked, language):
+            return [TopicTag("noise", "negative", "x", self.method)]
+
+    store.upsert_reviews([make_review("o1")])
+    classify_all(db_path, classifier=Fixed())
+    assert {(t[1], t[4]) for t in tags(db_path, "o1")} == {("noise", "other")}

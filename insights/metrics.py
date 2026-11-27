@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from insights.language import is_english_like
+from insights.language import analysis_language, is_english_like
 from scraper.config import BY_SLUG
 
 POSITIVE_FROM = 8.0
@@ -331,7 +331,8 @@ class CommentCounts:
     n_band_total: int        # all reviews in the sentiment band (rating-only ones included)
     n_with_comment: int      # those with written text for the polarity: the denominator for topic shares
     n_without_comment: int
-    n_non_english: int       # of n_with_comment, how many are not English (the keyword classifier is English-only)
+    n_non_english: int       # of n_with_comment, how many are not English
+    n_not_analysed: int = 0  # of n_with_comment, how many are in a language with no keywords (not tagged at all)
 
 
 def _tagged(df, topics, start, end, polarity, properties=None):
@@ -355,13 +356,12 @@ def _col(d: pd.DataFrame, name: str):
 def comment_counts(df, start, end, polarity="negative", properties=None) -> CommentCounts:
     band_rows, text_rows, _ = _tagged(df, None, start, end, polarity, properties)
     # Same rule as the pipeline (insights.language), so this count equals the reviews the pipeline left untagged.
+    non_en = not_analysed = 0
     if "language" in text_rows.columns:
-        non_en = sum(1 for lang, liked, disliked in zip(
-            text_rows["language"], _col(text_rows, "liked"), _col(text_rows, "disliked"))
-            if not is_english_like(lang, liked, disliked))
-    else:
-        non_en = 0
-    return CommentCounts(len(band_rows), len(text_rows), len(band_rows) - len(text_rows), non_en)
+        for lang, liked, disliked in zip(text_rows["language"], _col(text_rows, "liked"), _col(text_rows, "disliked")):
+            non_en += not is_english_like(lang, liked, disliked)
+            not_analysed += analysis_language(lang, liked, disliked) is None
+    return CommentCounts(len(band_rows), len(text_rows), len(band_rows) - len(text_rows), non_en, not_analysed)
 
 
 def topic_shares(df, topics, start, end, polarity="negative", properties=None) -> pd.DataFrame:
@@ -576,6 +576,9 @@ class Insight:
     kind: str                       # "alert" | "good" | "info"
     property: str | None = None     # property slug when the insight is about one property
     n: int = 0                      # number of reviews the statement rests on
+    # Feed filters the dashboard can apply for this finding. Keys: "safety", "neg", "noreply", "text" (bool),
+    # "topic" ("negative:<topic id>" / "positive:<topic id>"), "property" (slug). None when there is nothing to open.
+    action: dict | None = None
 
 
 def _count(n: int, noun: str = "review") -> str:
@@ -650,7 +653,7 @@ def _topic_insight(df, topics, ws, cur: WeekSummary, prev: WeekSummary):
                  "so treat with caution.")
     elif 0 < pn < LOW_SAMPLE_BELOW:
         text += f" Last week had only {_count(pn, 'negative review')} with a written comment, so treat the comparison with caution."
-    return Insight(text, "alert" if alert else "info", None, n)
+    return Insight(text, "alert" if alert else "info", None, n, {"topic": f"negative:{top['topic']}"})
 
 
 def _property_insight(df, ws):
@@ -668,7 +671,7 @@ def _property_insight(df, ws):
     if small:
         text += " Small sample, treat with caution."
     kind = "info" if small else ("good" if up else "alert")
-    return Insight(text, kind, r["property"], int(r["n"]))
+    return Insight(text, kind, r["property"], int(r["n"]), {"property": r["property"]})
 
 
 def _spike_insights(df, topics, ws):
@@ -686,7 +689,8 @@ def _spike_insights(df, topics, ws):
     for r in m.head(2).itertuples():
         out.append(Insight(
             f"{r.property_name}: {_count(int(r.count), 'negative review')} mentioned {str(r.label).lower()} "
-            f"this week, up from {int(r.count_prev)} last week.", "alert", r.property, int(r.count)))
+            f"this week, up from {int(r.count_prev)} last week.", "alert", r.property, int(r.count),
+            {"topic": f"negative:{r.topic}", "property": r.property}))
     return out
 
 
@@ -704,7 +708,26 @@ def _unreplied_insight(df, ws):
     by_prop = u.groupby("property_name").size().sort_values(ascending=False)
     if len(by_prop) > 1 and by_prop.iloc[0] > by_prop.iloc[1]:
         text += f" {by_prop.index[0]} has the most ({int(by_prop.iloc[0])})."
-    return Insight(text, "alert", None, total)
+    return Insight(text, "alert", None, total, {"neg": True, "noreply": True})
+
+
+def _safety_insight(df, topics, ws) -> Insight | None:
+    """Reviews in the week tagged with the safety topic (pests, mould, fire or electrical risk, theft)."""
+    if topics is None or len(topics) == 0 or "topic" not in topics.columns:
+        return None
+    end = ws + timedelta(days=6)
+    week = df[(df["review_date"] >= pd.Timestamp(ws)) & (df["review_date"] <= pd.Timestamp(end))]
+    keys = set(topics.loc[(topics["topic"] == "safety") & (topics["polarity"] == "negative"), "review_key"])
+    hits = week[week["review_key"].isin(keys)]
+    n = len(hits)
+    if n == 0:
+        return None
+    where = ""
+    if hits["property"].nunique() == 1:
+        where = f" at {_name(hits['property'].iloc[0])}"
+    text = (f"{_count(n)}{where} this week {'mentions' if n == 1 else 'mention'} a safety issue "
+            "(pests, mould, fire or electrical risk, theft). Read and act on these first.")
+    return Insight(text, "alert", None, n, {"safety": True})
 
 
 def generate_insights(df, topics, week_start) -> list[Insight]:
@@ -742,4 +765,8 @@ def generate_insights(df, topics, week_start) -> list[Insight]:
             found += [(False, 5, s) for s in _spike_insights(d, topics, ws)]
     rank = {"alert": 0, "good": 1, "info": 2}
     found.sort(key=lambda f: (not f[0], rank[f[2].kind], f[1]))
-    return [f[2] for f in found][:MAX_INSIGHTS]
+    out = [f[2] for f in found]
+    safety = _safety_insight(d, topics, ws)
+    if safety:
+        out.insert(0, safety)      # a safety issue always comes first, whatever else happened
+    return out[:MAX_INSIGHTS]

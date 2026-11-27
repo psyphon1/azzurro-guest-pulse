@@ -58,3 +58,23 @@ def is_english_like(language: str | None, *texts: str | None) -> bool:
     if code == "" or code.startswith("x"):
         return _judge_text(texts)
     return False
+
+
+# Booking.com language codes for the languages the classifier has keywords for. "xa"/"xm" are Spanish and "xb"
+# Brazilian Portuguese in the collected data; other "x?" codes are judged by the text (English or nothing).
+_CODE_TO_LANG = {"fr": "fr", "es": "es", "xa": "es", "xm": "es", "de": "de", "it": "it", "pt": "pt", "xb": "pt"}
+
+
+def analysis_language(language: str | None, *texts: str | None) -> str | None:
+    """Which keyword lexicon to use for a review: "en", "fr", "es", "de", "it", "pt", or None (not analysed).
+
+    The pipeline tags with it and the dashboard counts the None cases as "not analysed", so both agree."""
+    code = language.strip().lower().replace("_", "-") if isinstance(language, str) else ""
+    if code.startswith("en"):
+        return "en"
+    base = code.split("-")[0]
+    if base in _CODE_TO_LANG:
+        return _CODE_TO_LANG[base]
+    if code == "" or code.startswith("x"):
+        return "en" if _judge_text(texts) else None
+    return None

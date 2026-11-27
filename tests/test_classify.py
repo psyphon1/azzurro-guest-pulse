@@ -9,7 +9,7 @@ def pairs(tags):
 
 # --- taxonomy ----------------------------------------------------------
 def test_taxonomy_has_exactly_the_contract_topics():
-    assert TAXONOMY_VERSION == "2"
+    assert TAXONOMY_VERSION == "3"
     assert {k: t.label for k, t in TOPICS.items()} == {
         "safety": "Safety & pests",
         "cleanliness": "Cleanliness",
@@ -227,8 +227,14 @@ def _tagged(liked="", disliked=""):
 
 
 @pytest.mark.parametrize("liked", ["Free lunch", "Having delicious dinner every night", "The meals were good", "Great food"])
-def test_meals_count_as_facilities(liked):
-    assert ("facilities", "positive") in _tagged(liked=liked)
+def test_meals_and_perks_are_not_facilities(liked):
+    # Changed in the polish pass: "great host and free dinner" was wrongly praise for Facilities. A meal or a free
+    # dinner is a perk, not a facility; only breakfast (a hotel amenity) stays.
+    assert ("facilities", "positive") not in _tagged(liked=liked)
+
+
+def test_breakfast_is_still_a_facility():
+    assert ("facilities", "positive") in _tagged(liked="Good breakfast included")
 
 
 def test_bathroom_availability_is_facilities_not_room_condition():

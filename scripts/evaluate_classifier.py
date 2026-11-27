@@ -57,13 +57,17 @@ class Report:
     cases: int = 0
 
 
+# The gold files were labelled before the "safety" topic existed, so safety is not scored against them.
+EVAL_TOPICS = [t for t in TOPICS if t != "safety"]
+
+
 def evaluate(cases: list[dict]) -> Report:
-    per_topic = {t: Counts() for t in TOPICS}
+    per_topic = {t: Counts() for t in EVAL_TOPICS}
     overall = Counts()
     misses: list[Miss] = []
     for case in cases:
         tags = classify_review(case.get("liked"), case.get("disliked"))
-        predicted = {(t.topic, t.polarity): t.evidence for t in tags}
+        predicted = {(t.topic, t.polarity): t.evidence for t in tags if t.topic in per_topic}
         expected = {(t, p) for t, p in case["expected"]}
         for key in sorted(set(predicted) - expected):
             per_topic[key[0]].fp += 1

@@ -8,8 +8,8 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 
-from insights.classify import CLASSIFIER_REVISION, MAX_TEXT_CHARS, classify_review
-from insights.language import is_english_like
+from insights.classify import CLASSIFIER_REVISION, MAX_TEXT_CHARS, TopicClassifier, classify_review
+from insights.language import analysis_language
 from insights.topics import TAXONOMY_VERSION
 
 SCHEMA = """
@@ -39,10 +39,19 @@ class ClassifyResult:
     tags_written: int
 
 
-def classify_all(db_path: str) -> ClassifyResult:
+class _DefaultKeywords:
+    """The keyword classifier, looked up at call time (tests replace classify_review)."""
+    method = "keywords"
+
+    def classify(self, liked, disliked, language):
+        return classify_review(liked, disliked, language)
+
+
+def classify_all(db_path: str, classifier: TopicClassifier | None = None) -> ClassifyResult:
     """(Re)classify reviews that are new, changed since tagging, or tagged under an older taxonomy."""
     if db_path != ":memory:" and not os.path.exists(db_path):
         raise FileNotFoundError(f"Database not found: {db_path}")
+    classifier = classifier or _DefaultKeywords()
     version = TAXONOMY_VERSION
     state_version = f"{version}+{CLASSIFIER_REVISION}"   # what the 'done' memory compares; review_topics keeps `version`
     db = sqlite3.connect(db_path, timeout=30)
@@ -59,8 +68,10 @@ def classify_all(db_path: str) -> ClassifyResult:
             if done.get(key) == (content_hash, state_version):
                 skipped += 1
                 continue
-            # The keyword classifier only understands English: other languages get no tags (but are remembered).
-            tags = classify_review(liked, disliked) if is_english_like(language, liked, disliked) else []
+            # Keywords exist for English, French, Spanish, German, Italian and Portuguese. Other languages get no tags
+            # (but are remembered) and the dashboard counts them as "not analysed".
+            lang = analysis_language(language, liked, disliked)
+            tags = classifier.classify(liked, disliked, lang) if lang else []
             db.execute("DELETE FROM review_topics WHERE review_key=?", (key,))
             db.executemany(
                 "INSERT INTO review_topics (review_key, topic, polarity, evidence, method, taxonomy_version)"

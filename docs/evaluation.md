@@ -178,3 +178,27 @@ stopping negation leaking, and `walked past` no longer counting as a location me
    re-check on a fresh sample so we do not overfit to the 100.
 5. If keyword precision stays too low for `room_condition` / `staff`, add the LLM method
    (`method = 'llm'`) behind the same table.
+
+## Polish pass (taxonomy 3, classifier revision 5)
+
+Changes: keyword lexicons for French, Spanish, German, Italian and Portuguese (routed by the review's language;
+other languages are counted as "not analysed"); a ninth topic, Safety & pests, which is only ever a complaint
+and is excluded from the scores below because the gold files predate it; empty answers ("nothing", "n/a",
+"rien", "nada") give no tag; "window" counts only in the disliked box; meal words ("dinner", "food") no longer
+count as Facilities ("great host and free dinner" was praise for Facilities).
+
+Re-run on the English gold file (`python scripts/evaluate_classifier.py tests/fixtures/real_gold_labels.json --split test`):
+
+| split | before (P / R / F1) | after (P / R / F1) |
+|---|---|---|
+| held-out test (50) | 0.81 / 0.76 / 0.79 | 0.84 / 0.74 / 0.78 |
+| dev (50) | 0.91 / 0.91 / 0.91 | 0.92 / 0.89 / 0.91 |
+
+Precision went up and recall went down a little: the annotator had labelled meals as Facilities, which this pass
+deliberately stopped doing. The "before" column is the previous code scored the same way, so the small gap to the
+0.84 / 0.76 / 0.80 quoted above comes from the safety stub topic that existed in between.
+
+On the live data, re-tagging gave tags to 464 reviews that had none before (French 166, Spanish 118, German 99,
+Italian 38, Portuguese 43). 108 reviews carry a Safety & pests tag; a random sample of 25 had one false positive
+(the Spanish idiom "un robo" for "a rip-off", since removed). There is no gold set for the five new languages yet,
+so their accuracy is unmeasured.
