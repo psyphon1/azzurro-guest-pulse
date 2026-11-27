@@ -50,6 +50,9 @@ _TOPIC_LIST = [
         "laundry", "washing machine", "tv", "television", "hot water", "pool", "gym", "tea", "coffee",
         "utensils", "cutlery", "crockery", "equipped", "hairdryer", "hair dryer", "iron", "lounge",
         "lobby",
+        # meals, and bathroom amenities/availability (a count of toilets is a facility, a broken one is a room fault)
+        "breakfast", "lunch", "dinner", "meal", "meals", "food", "restroom", "restrooms", "mirror",
+        "enough bathroom", "enough bathrooms", "enough toilet", "enough toilets", "enough shower", "enough showers",
     )),
     Topic("location", "Location", (
         "location", "located", "close to", "near to", "nearby", "walk to", "walk from", "walking distance",
@@ -59,8 +62,8 @@ _TOPIC_LIST = [
         "cafes", "shops", "convenient location", "airport", "city",
     )),
     Topic("room_condition", "Room condition", (
-        "bed", "beds", "mattress", "pillow", "pillows", "linen", "sheets", "window", "windows", "shower",
-        "toilet", "bathroom fittings", "tap", "taps", "broken", "run down", "run-down", "rundown",
+        "bed", "beds", "mattress", "pillow", "pillows", "linen", "sheets", "window", "windows",
+        "bathroom fittings", "spacious", "roomy", "cozy", "cosy", "tap", "taps", "broken", "run down", "run-down", "rundown",
         "tired", "dated", "worn", "worn out", "old", "peeling", "leak", "leaking", "leaks", "damp",
         "damaged", "cracked", "fridge", "refrigerator", "furniture", "carpet", "curtain", "curtains",
         "comfortable", "uncomfortable", "cramped", "tiny", "small room", "needs repair", "needs updating",

@@ -11,7 +11,7 @@ METHOD = "keywords"
 MAX_TEXT_CHARS = 5_000
 MAX_EVIDENCE_CHARS = 300
 # Bump when the way text is cleaned or matched changes, so the pipeline re-tags reviews it already did.
-CLASSIFIER_REVISION = "2"
+CLASSIFIER_REVISION = "3"
 
 # Characters with no visible width, soft hyphens, bidi controls, variation selectors, control characters:
 # "d<zero-width space>irty" must read as "dirty".
@@ -85,6 +85,23 @@ _ALL_CLEAR = re.compile(
 )
 
 
+# A staff noun in a COMPLAINT only counts as a staff complaint when the clause also says something negative.
+# "...which I did inform the receptionist about" is a cleanliness complaint that mentions reception, not a staff one.
+_STAFF_NOUNS = frozenset({"reception", "receptionist", "receptionists", "staff", "manager", "service",
+                          "customer service", "host", "the team", "lovely team"})
+_COMPLAINT_CUES = frozenset({
+    "slow", "poor", "bad", "terrible", "awful", "horrible", "disgraceful", "disgusting", "abused", "assaulted",
+    "shouted", "yelled", "argued", "lazy", "absent", "lacking", "lack", "unavailable", "nobody", "useless",
+    "incompetent", "aggressive", "hostile", "threatened", "refused", "refuse", "worst", "disappointing",
+    "unacceptable", "inattentive", "unresponsive", "rudely",
+})
+
+
+def _has_complaint_cue(clause: str) -> bool:
+    tokens = _TOKEN.findall(clause.lower())
+    return any(_is_negator(t) or t in _COMPLAINT_CUES for t in tokens)
+
+
 def _is_negator(token: str) -> bool:
     return token in _NEGATORS or token.endswith("n't")
 
@@ -141,6 +158,9 @@ def _tags_for(text: str | None, polarity: str) -> list[TopicTag]:
             for topic_id, pattern in _PATTERNS.items():
                 decisions = []
                 for m in pattern.finditer(clause):
+                    if (topic_id == "staff" and polarity == "negative" and m.group("kw").lower() in _STAFF_NOUNS
+                            and not _has_complaint_cue(clause)):
+                        continue  # a bare mention of staff is not a staff complaint
                     is_problem = m.group("kw").lower() in PROBLEM_KEYWORDS
                     negated = _negated(clause[: m.start()], is_problem)
                     decisions.append(_keep(is_problem, negated, all_clear, polarity))

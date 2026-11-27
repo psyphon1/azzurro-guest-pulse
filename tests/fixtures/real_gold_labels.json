@@ -1,0 +1,1961 @@
+[
+ {
+  "id": "real_cd696c912d76",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "the Darling harbor view",
+  "disliked": "cleaning, food, kitchen, general maintenance, few bathroom/toilet",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_57f13c305a47",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Their customer service is excellent and they are very helpful in working with me regarding room reservations and changes.",
+  "disliked": "Friendly stuff",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ]
+  ],
+  "note": "misplaced box (praise in disliked)"
+ },
+ {
+  "id": "real_5aa806e3e8e2",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Good virtual reception",
+  "disliked": "The ensuite was filthy. Someone had explosive poo and they had obviously not cleaned the toilet before the new guest. \nI have contacted the hotel for a refund and the response was....yeah they will get back to you in 5-10 business days. \nDisgusting.",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ],
+  "note": "'good virtual reception' tagged staff; ambiguous with check_in"
+ },
+ {
+  "id": "real_99a28b85d052",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Location",
+  "disliked": "The damp smell, the wet bathmat upon arrival at hotel room, the bathroom smell throughout the hallways, the cockroach infestation",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_276a8809447c",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Very cheap, good value for money since it’s a good location but it’s not the most comfortable hostel",
+  "disliked": "Noisy, some rooms and showers not very clean",
+  "expected": [
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_dff2a82d7552",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "I always book one night in a hostel before reserving it for a longer period. This hostel exceeded my expectations, so I extended my stay for two weeks. It has a convenient location, friendly staff, and the area was kept clean throughout my stay.",
+  "disliked": "Unfortunately, there were some drunk and rude visitors, and since there’s no staff on-site at night, other guests had to deal with them on their own.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_c3f65155f30d",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "All the staff members, whether online or onsite, were friendly and provided all necessary information prior to check-in.",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_a54a9af0d807",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "This is my 2nd time staying at the hotel. I initially chose the hotel because of the location. But the help of the staff, specially Shella at reception made the journey very pleasant. We didn’t have to worry about check-in or check-out. They took care of everything and we could just enjoy our stay. I plan on coming back again here for my next vacation!",
+  "disliked": "",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_cea85e889b68",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Very nice stay",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "real_b053c7ec89ee",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Location, very good!",
+  "disliked": "I have no complaints.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_119af5b2635f",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "it's tidy and snug, with a welcoming staff. the location in potts point couldn't be better, surrounded by numerous cafes and eateries.",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ]
+  ],
+  "note": "'tidy' not tagged"
+ },
+ {
+  "id": "real_62b8328bb990",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "hassle-free booking!",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "real_c6f28dbfddab",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "The hostel is clean. Convenient location with easy access to public transportation. Perfect for travelers on a tight budget.",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "value",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_baae1472600c",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Location, atmosphere, great service from Shella.",
+  "disliked": "",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_cc507b0960b5",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "",
+  "disliked": "Some guests forgot to clean their dishes. Management should consider implementing a fine for those instances",
+  "expected": [
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_a3a14c1f2fbb",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "The location was okay (if a little dodgy looking from the outside) and the privacy curtains around the bed were a nice touch.",
+  "disliked": "The bathrooms were horrendous- there were 2 toilets and 3 showers for all of the rooms and only 2 doors actually locked. There was one sink with no soap dispenser and not even any paper towels to dry your hands. The photos are also obviously taken years ago when it was first renovated as it was not an accurate representation of what it looks like now. \n\nThey also have an app check-in 'to make things easier', but this didn't work. I had to email to ask what my rooms was (despite providing the extensive information required beforehand), then was initially given the wrong room number to go with the code I was provided. The staff did quickly rectify this (which was a positive), but it definitely didn't enhance my stay and I was not the only one with this issue.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_42aeb21bf769",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Very good",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "real_ffd4e5b86e54",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Staying at Azzuro Pod Hostel was an incredible experience! The food was great  every single day. The rooms were spacious, clean, and cleaned daily. The staff were always extremely helpful and friendly. Thank you for making our stay so wonderful!",
+  "disliked": "",
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_8b31b17459c1",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "The receptionist guy was so helpful, answering all my questions with a smile. \r\nThe cleaners were also amazing, ensuring the rooms and shared bathrooms were spotless. \r\nThe location is unbeatable, with plenty of bars, restaurants, and even a view of the bridge from my room.",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_3bc2026db2ab",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "this place has become my second home in the kast few months, the staff  are great and its value for money.",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "value",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_2a810cd9e4dc",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "I liked the remote / zoom concierge I have never seen that before. I liked that ALL staff were very polite friendly hard working and respectful. I liked the firm comfortable mattress. I liked the bed curtains. I liked the on-site washing machine (free, including hot water if you want), and the on-site dryer ($4 per load, tap to pay). I liked the door code devices. I liked that breakfast and dinner are included. I liked the hot water in the shower. I liked the clean functional toilets including extras down in the backyard for more privacy and space.",
+  "disliked": "A couple of the door code devices may need repair / replacing. Some of the patrons were disgusting how they treated the kitchen leaving huge cooking messes for staff to clean up, do they not understand over time that might lead to an increase in accommodation coat for everyone, if staff are required to work longer to clean up extra messes. Some patrons were selfish in how they were not quiet during sleep time. Towels a little pricey at $15, for that i can purchase my own. The wooden balustrades could benefit from repair and daily wipe down as we all relied on them to go up and down the steep stairs everyday.",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_fddca4fe5298",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Location lovely stuff.",
+  "disliked": "",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_5ffbdf5cd678",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "clean, convinnient",
+  "disliked": "the floor is very squeaky",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ],
+  "note": "'convinnient' too vague for location"
+ },
+ {
+  "id": "real_5a2b4f28d828",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Lovely rooms; I loved that the bunks all had curtains and walls around them and felt very cozy and private. Loved that the room had its own sink and lots of cupboard and counter space. Location was great, close to lots of sights while still on a quiet street. Kitchen and seating areas were all lovely. The whole place was super clean. Overall a great place to stay :)",
+  "disliked": "Not nearly enough bathrooms; there were only 4 individual toilet + showers for the whole hostel which houses probably 50-60+ people or so? Meant long queues for the shower or toilet in the morning and evening. Also, they appeared to rebrand to a mixed-sex hostel while I was there as a few guys checked in, which wasn’t an issue for me so much but felt like misleading advertising as we had all booked in under the pretence of it being a women’s-only hostel.",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "noise",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_b99d49afe309",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "The meals were good, the bathrooms were nice.",
+  "disliked": "Check-in is complicated and I wasn't allowed into the room earlier than check-in time as the door code won't activate before 3pm. It's not cool after a sleepless night on the plane.\nFeathers pillow (allergy)",
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_52b1e14eca25",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "I'd definitely choose to stay at this hostel again for my vacation.",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "real_41b1f35cba51",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Staff. Clean. Location",
+  "disliked": "Some curtains in the pod are too short for privacy",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_6d09952a69b5",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "great location",
+  "disliked": "no parking and the council gives you 1hr parking \nbetween 8am and 10pm 7 days in the whole area.\nthey will need to upgrade to aircon or bigger fans because it gets very hot and it not summer yet.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_79ad1fabd9b7",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "free lunch",
+  "disliked": "no reception",
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_cdea2877d777",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "The location was good for public transportation",
+  "disliked": "There was a kettle, but no cups and cockroaches, which I did inform the virtual receptionist about. It’s a little noisy when people have walked past your room.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_d78efae43290",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Best Location\r\nhigh security\r\nreasonable free  breakfast\r\nDid not have free Dinner",
+  "disliked": "No face-to-face contact with the administration or staff",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ],
+  "note": "'did not have free dinner' in liked box; both F polarities"
+ },
+ {
+  "id": "real_a5698a52935a",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "The check in process was quick and easy, and the staff were responsive and super helpful. The room was tidy, spacious and comfortable. Alona and the team were a great help and made my stay very comfortable.",
+  "disliked": "",
+  "expected": [
+   [
+    "check_in",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_3c213da2d8cd",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "property was close to transport and establishments\nfriendly 'virtual' staff",
+  "disliked": "leaking tap\nfound hair in fridge when we checked in\nno bath mat and each time we requested, they took away the next day\ndirty microwave\nroom didnt feel sanitized and clean",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_19f79537043f",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Great location and good price for my stay",
+  "disliked": "Bathrooms weren’t clean, the trimmed pubes by the side of the toilet I seen a few days in a row were off putting. No ventilation in the bathrooms caused a lot of damp mould in them too. It was a struggle to get a shower at a reasonable time in the morning due to 2 or 3 being out of order and probably too many people per shower",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_4e65d2ea56a0",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Verbally assaulted by staff",
+  "disliked": "The staff that were absolutely disgraceful I was abused by having an extra pillow by using an extra pillow",
+  "expected": [
+   [
+    "staff",
+    "negative"
+   ]
+  ],
+  "note": "misplaced box (complaint in liked)"
+ },
+ {
+  "id": "real_1b0b1ea88d19",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Being close to the city and having delicious dineer every night",
+  "disliked": "I think they can save a lot of money in water bills and electricity if they fix the taps and toilets cistern leaks",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_602534c76d3b",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Location",
+  "disliked": "Place is crowded and dirty. Construction happening. Reception is a screen with a very unimpressed face. Don't waste your time and money. Horrible!!",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "value",
+    "negative"
+   ]
+  ],
+  "note": "construction -> noise, ambiguous"
+ },
+ {
+  "id": "real_fd30d87a8691",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "It’s not flashy, but has the essentials: clean bathrooms, working Wi-Fi, and private sleeping space.",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_7247bb84ebb9",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "It’s affordable and has comfortable bed",
+  "disliked": "Location is not very easy for pubic transport",
+  "expected": [
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "location",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_c4489beeb66f",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "There were no bed bugs; the bed was comfortable; and the location was fantastic.",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_deb22db49dc5",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "clean rooms, friendly staff, great location",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_1c0f070c2eeb",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Huge thanks to this hostel for giving me such a great experience. My trip to Sydney started off a little rough, but staying here helped me relax and recharge — exactly what I needed for the next day's itinerary.",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "real_a85c306696fe",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Location and budget",
+  "disliked": "Hard bed    could have tea/coffee",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_4a78d371fb1f",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Nothing",
+  "disliked": "Limited luggag storage.. bed not comfort. Not so clean..Reception via tv diffcult to communicate",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_58cff2441999",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "We had a really great stay and would definitely recommend this hotel!\n\nThe room was very clean, well organised and comfortable, and everything was exactly as we expected. The Wi-Fi worked perfectly throughout our stay, and the access system with the entry code was very simple, convenient and made everything feel easy and secure.\n\nA special thank you to Alona and Julie, who were absolutely amazing and so friendly! Even though the reception process was virtual when we arrived, they assisted us through the computer with the check-in and made the whole experience incredibly smooth. Everything was explained clearly, communication was excellent, and the process was quick and straightforward with no unnecessary complications or bureaucracy. We really appreciated how helpful, patient and welcoming they were.\n\nThe location is also very convenient. It’s easy to get around using public transport, and being close to Allianz stadium and Bondi Beach is definitely a big plus, especially if you want to explore one of Sydney’s most popular areas.\n\nOverall, we really enjoyed the practicality of the hotel, the cleanliness, the location and especially the excellent customer service. Everything worked perfectly from check-in to check-out.\n\nThank you again to Alona and Julie for making our stay even better. We would happily stay here again!",
+  "disliked": "Nothing, everything was great!",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_188903a6aa6b",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "The beds are comfy",
+  "disliked": "You have to do the check in online because nobody is attending the hostel, I had the wait like 1 hour to do it.",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_219350a1f791",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "1) Service 2) Location\r\n1) Receptionists' were very helpful although they were virtual. They were present for all the time through a screen, so you can reach out to them about anything. \r\n2) Location was 10 mins walking distance to International Conference Centre (ICC), very convenient.",
+  "disliked": "The toilets- 1) Very limited 2) Very dirty. \r\nThere were 4 shower rooms, one malfunctioning. And there were >10 dorm rooms in a level. Assuming each room has 4 beds, so there were about 40 people in a level. \r\n1) 40 people sharing 4 shower rooms... I had a difficult time searching for an empty one every time.\r\n2) Some toilets were clogged, some were not flushed, some bins were overflowed with toilet paper. \r\nThe ratio of user:toilet/shower is too high! 10 people sharing 1 shower room, and that is only based on a conservative assumption of the number of pax per level. Of course it would be soooo dirty!\r\nI've stayed in a few youth hostels before and this is the worst experience I've ever had.",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_a9c7c33371bc",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "",
+  "disliked": "The restroom I used didn't have a mirror.",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_3b6f4d367e55",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Friendly staff. Location.",
+  "disliked": "No aircon. No lift.",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_53e8e322d68d",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Only customer service is ok",
+  "disliked": "Too small rooms birds noises in the night no fan in the room no water. No front desk assistance. Too hard to get in and out. Expensive not worth the service you get",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "value",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_342f10399810",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "The hostel is super clean and safe with all the locks (outside the main door as well as outside the room door). Even if the staff is not physical present, it’s always available through the WhatsApp number, they helped me a lot with the self check in operations.",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_a31ced395585",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "It was close to the CBD and darling harbour.",
+  "disliked": "The toilets and shower were busy after 8am and we had to wait in a queue. I decided to not take a shower because I didn’t have time to wait. There was a rude, angry lady in the dining area and I had to leave because I felt uncomfortable.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_d8a6245d924d",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Great location",
+  "disliked": "Aircon very loud. Difficulty accessing building.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ],
+  "note": "loud aircon tagged noise"
+ },
+ {
+  "id": "real_25809af2f983",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "The location is good and the room is ok",
+  "disliked": "The bathrooms weren’t cleaned at all during my stay",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_e843235b4614",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "",
+  "disliked": "I strongly advise against booking this hostel. My experience was shocking and unacceptable. First, they attempted to pressure me into booking directly through them instead of using Booking.com, likely to avoid the platform fees. When I refused and continued using Booking.com for the convenience of Afterpay, they retaliated. After booking my last day, I was abruptly kicked out in the middle of the day without any valid reason, and they refused to refund my money. To make matters worse, they called the police to forcefully remove my belongings and left them on the street. Now, I'm sitting outside with nowhere to stay.\n\nThey claimed my e-bike battery violated their rules, which is completely false—I never brought it inside. When I asked them to check the cameras, they changed their excuse to the amount of my luggage, even though I had already taken it out of their storage as they requested. Initially, they said the room was for luggage storage, but later they changed their story, saying it was their office and that I would need to pay for external storage. Despite their lies, they even posted a sign saying the room was for luggage, only to throw out my belongings.\n\nThe staff, especially one named Lizza, was exceptionally rude and seemed to enjoy threatening me. I wasn’t even given the opportunity to finish an important exam, causing me to fail. As an international student, this was devastating. The way they treated me was cruel, and I wouldn’t wish this experience on anyone.\n\nThis hostel not only disrespected me, but they also stole $74 from me for a night I never stayed, and they show no remorse. There are many better options in the area, like Mad Monkey Hostel. Do yourself a favor and avoid this place at all costs. They may respond to this review with a polite, dismissive response, but don’t be fooled—this is how they truly operate.",
+  "expected": [
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_b08b4201c72b",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Staff were kind and helpful.",
+  "disliked": "Mould on walls, noisy from street and other occupants slamming doors and putting in PIN codes. No practical place to put clothes/toiletries in bathroom while showering (only place is on toilet lid).",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_2e9ac1215f14",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Lovely hearty dinner with soup +  free breakfast = popular\n\nNice staff\n\nRelaxed atmosphere e.g. no drinking \n\nGood location\n\nComfy mattresses + curtains are nice",
+  "disliked": "No where near enough toilets/showers on each floor = lots of waiting + showers have no where to put your clothes/towel= dirty\n\nSome of the bunks are rickity\n\nDoor code system ( touchpad keybad) is menial and boring.\n\nDoor code changes with no notice",
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_31f715eec649",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "",
+  "disliked": "I've been to dozens of hostels throughout 4 continents (many very cheap ones) and this has been by far the least enjoyable hostel I've been to.\r\n\r\nThere is no staff on site (the one cleaner who doesn't speak english and just hangs out in the kitchen doesn't count). Facilities' and spaces' capacities are way under the amount of beds they offer. I believe there is one shower and two bathrooms for dozens of guests. \r\n\r\nThe environment doesn't feel safe. I was in fact kicked by one of the guests but there was no one to turn to: the receptionist is a computer screen.",
+  "expected": [
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_6dced66ea212",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "the location",
+  "disliked": "The hotel did not match the photos shown online and was in poor sanitary condition. The room had a bad smell, the hallways were dirty, and several bathrooms were out of service. In addition, the ironing board was moldy and very old. Although the staff was kind enough to offer a room change on the first night, the overall experience was unpleasant and did not meet expectations.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_e90b83c36a3a",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "near everything I needed!",
+  "disliked": "bit of street noise at night, but I got used to.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_7152ad6696ad",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "I liked the privacy curtains on the bunks",
+  "disliked": "The online check in process has many flaws took me forever to get my code.\nThe complimentary breakfast and dinner service is like a war zone trying to get to the food etc\nThe bathrooms were never clean when I used them hairs everywhere, dirty shower floors and on my floor there was only 2 bathrooms available",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_58dfa80145ef",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Staff Shella",
+  "disliked": "Smell from the bathroom",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_fcea005ee599",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Great location, staff are fantastic",
+  "disliked": "",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_16fc957a0935",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "",
+  "disliked": "During self-check-in, I encountered an issue because the registered name was incorrect.",
+  "expected": [
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_d5574e207ff4",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "It was a good room for a one night single person stay, it was clean and quiet, and easy to find, bed was pretty comfy.",
+  "disliked": "It was strange to be greeted by zoom call, and my room had no drinking glasses. There werent many food options nearby, and it wasnt that close to the city. It was originally booked for a concert that got cancelled, if the concert had happened it would have been a convenient location.",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "noise",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "location",
+    "negative"
+   ]
+  ],
+  "note": "zoom greeting tagged staff, ambiguous"
+ },
+ {
+  "id": "real_d189fb149e0a",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "breakfast was simple but a good way to start the day, and I noticed the new management is making improvements across the board; their dedication to enhancing the guest experience is inspiring.",
+  "disliked": "",
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_62d85e66efe4",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Helpful staff",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_d0387644e62c",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "I loved the curtains on the beds as it made it private and light tight. The breakfast and dinner included is amazing for the price. The location is amazing. That's all the positive. The halls are really smelly. It's not like the pictures. The bathrooms/toilets are tiny and dirty. The shower kept going hot to cold and the shower head kept falling down. There is no lounge area so if your not in your room the other other space to be is the dining room. The kitchen you cant use only by staff. And most of the fridges are for staff only. Oh and the check in was ridiculous. Staff is never at the desk. I was told I could leave my bags until 2pm check in but couldn't get into the building. Also had to contact someone to send me my room information for check in. This system needs to be looked at.",
+  "disliked": "",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_a77c41656495",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Location good",
+  "disliked": "",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_91d2110cde52",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "The location.",
+  "disliked": "Rooms was not clean when we checked in. \nDid not get the room I booked, so had to arrange to be upgraded. \nVery noisy.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_160c20da9124",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "the kitchen facilities were nice to cook in, the place is pretty quiet and decent, i enjoy to walk so walking around the property was also great to do",
+  "disliked": "",
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "noise",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_69c1aa0ff58d",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "nothing",
+  "disliked": "We were not assigned the room that we booked. The room was dark (basement) and very stinky. It took 1 hour to finally reach someone on the phone. Took another hour for them to figure out what to do. There's no room left with bottom bunk we requested for my partner's needs. So we had to find another place to stay. It wasted us almost the whole day. That happened about a week ago already and they haven't refunded those three nights to us.",
+  "expected": [
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_138b16dd502a",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "The best, and maybe the only good thing, is the location. The rest leaves something to be desired, although the rooms were also good.",
+  "disliked": "There is no staff that can help you when you arrive, only people through a computer. The hostel is uncomfortable because it is a building with many floors. Although breakfast and dinner are included, it is not the best in the world: breakfast is just the usual; dinner... they only have 3 courses, so if you stay more than 3 nights you will repeat meals. There are no common areas except for the dining room, which does not accommodate all the people who sign up for dinner. This means that you will find people dining on the stairs, in the lobby outside the rooms...",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_1b98bd1ae160",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "clean, comfortable, and staffed with the friendliest people. a truly wonderful experience.",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_737bdb225e15",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Kudos to the staff for being so approachable and helpful! Their recommendations for local spots added authenticity to my stay!",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_682d57bc349a",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Staff gave all the needed information to check in and get into the room. It was easy to navigate how to get in to our room.",
+  "disliked": "The shower was really dirty and needs a good clean, it also needed mat for the shower and it didnt come with one.\n Same with the floor, it needs a decent mop. Our feet were black after getting out the shower and walking around the room.\nThe toilet paper holder was broken, that needed to be fixed and maybe a hand towel and soap for the sink aswell.",
+  "expected": [
+   [
+    "check_in",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_99956e8ebe01",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "The location and the place are nice!",
+  "disliked": "The toilets were too dirty. And the organisation with the kitchen and fridge wasn’t good. The fridge was full and the lunchboxes that the hostel provides are too big for a short stay.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_309e5b8a2f1e",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Nothing",
+  "disliked": "everything",
+  "expected": [],
+  "note": "misplaced box ('everything'), no specific topic"
+ },
+ {
+  "id": "real_183d976dba00",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "",
+  "disliked": "While my room didn't have AC, the provided fan helped. The staff assured me they are actively addressing the issue, and I'm hopeful they can install AC for all rooms soon.",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_8ce517cfd891",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Cleanliness, security, nice meals, prompt response to enquiries etc.",
+  "disliked": "Nothing",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_214152a37175",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Great location",
+  "disliked": "Furnishings in dining is quite old.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_a069b759661f",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Didn’t have breakfast",
+  "disliked": "Stiffness of front door",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ],
+  "note": "misplaced box (no breakfast in liked)"
+ },
+ {
+  "id": "real_244add39cdb3",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Clean, tidy, beds was comfy and had privacy curtains. Loved that it had laundry facilities. And love the breakfast and dinner. Staff was so helpful",
+  "disliked": "Sometimes the door code wouldn’t work on front door.",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "facilities",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_8c970f0e7c21",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Staying at this hostel was an experience I’ll cherish for a long time. Its a trip with me and my mother and i wanna make sure the place where we stayed is something that she liked. and she did!",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "real_21fe1c071d93",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Access was very quick, very easy.",
+  "disliked": "It would (\"always\") be nice if there were a bit more community space. In practical reality, there are limits.",
+  "expected": [
+   [
+    "check_in",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_aa730ebbd230",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "It was comfortable and close to the stadium.. staff was very nice and accommodating.",
+  "disliked": "",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_2eaa5f4bf4f1",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "",
+  "disliked": "This hotel was absolutely appalling. The room was filthy, and to make matters worse, there were cockroaches inside. The level of hygiene was completely unacceptable, and we felt deeply uncomfortable staying there. This was by far one of the worst hotel experiences we have ever had. Avoid this place at all costs if you’re planning a trip to Sydney, it was a complete nightmare and absolutely not worth the money. I would never recommend this hotel to anyone.",
+  "expected": [
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "value",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_c29f11b3cf3e",
+  "source": "real review, chateau-de-venus, independent labeller",
+  "liked": "Quite",
+  "disliked": "Location",
+  "expected": [
+   [
+    "noise",
+    "positive"
+   ],
+   [
+    "location",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_188b3755a2f1",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "Location was good. Everyone was nice.",
+  "disliked": "Shower was terrible. No lifts or escalator. No common area, even lobby was cluttered. Toaster and jug supplied but nowhere to set them up. Our room leaked in a thunderstorm so badly we had to be moved. Now I have discovered that they have also charged my credit card for an unauthorised amount. There is no permanent staff on site to deal with. To be fair, as I am writing this I got a call assuring me the overcharged amount has been refunded.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_7304d7a3dd4d",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Good and very affordable hostel especially for a student like me. Though some guests don't care about other guests they just don't know how to clean their own space and leave their dishes dirty",
+  "disliked": "",
+  "expected": [
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_86be75f8e32e",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "GOING OUT THE DOOR.",
+  "disliked": "NO AIR CONDITIONING, NO CUPS, NO MILK AND THEY DID NOT CARE",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ],
+  "note": "liked 'GOING OUT THE DOOR' sarcastic, not labeled"
+ },
+ {
+  "id": "real_9da8b133703e",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "location and ease of check in",
+  "disliked": "",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_ac66628fb82b",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "I liked nothing and I would not reccomend it to anyone. A shower and a toilet in a room 1M x1.5 was revolting.",
+  "disliked": "everything",
+  "expected": [
+   [
+    "room_condition",
+    "negative"
+   ]
+  ],
+  "note": "misplaced box (complaint in liked)"
+ },
+ {
+  "id": "real_3fc5f8cf3f27",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "No breakfast",
+  "disliked": "Key needs a tag. Easily lost on its own.",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ],
+  "note": "misplaced box (no breakfast in liked)"
+ },
+ {
+  "id": "real_75016e4f437c",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "The atmosphere was amazing! The hostel staff were exceptionally friendly and helpful, creating a homely environment. The location was superb! Close to all attractions and public transportation, making it perfect for city exploration.",
+  "disliked": "",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_38940cc3f35b",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "+ the room had a cozy setup\r\n+ the staff were happy to help with any charging needs. I was told they’re working on adding more outlets to make things even more convenient for guests.",
+  "disliked": "",
+  "expected": [
+   [
+    "room_condition",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_befcb87357da",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Safe, clean, and friendly - an ideal hostel for solo female travellers!",
+  "disliked": "",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "real_3100352cc46c",
+  "source": "real review, olympic-paddington, independent labeller",
+  "liked": "We came for the World Cup game, the location was perfect just across the road",
+  "disliked": "The pub and music was pretty loud after the game which was to be expected",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_ad29b3775c0f",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "Everything was clean",
+  "disliked": "Bathroom should be better, I asked them to let my luggage at Venus before check in time and they send me to another place, should have reception or storage for this kind of stuff, they don’t allow late check out",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_20f26458d377",
+  "source": "real review, venus-potts-point-sydney, independent labeller",
+  "liked": "",
+  "disliked": "Absolutely awful stay. I arrived and there was someone sleeping in my bed, no clean bed made up. The room was absolutely disgusting, smelled so strongly of mould and damp it made me feel ill. Other guests said they had complained and management did nothing. Check in is virtual and it didn’t seem like there was anyone to properly talk to, with authority. I tried to leave but they would not refund me, so I had to stay. The common areas are tiny and look nothing like the advertised pictures. The meal was pretty horrible, and everyone had to eat either standing up or sitting on the floor. Overall the worst hostel I’ve ever stayed in, would not recommend to anyone.",
+  "expected": [
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "check_in",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ }
+]

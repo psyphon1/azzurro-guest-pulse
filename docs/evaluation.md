@@ -1,5 +1,92 @@
 # Topic classifier evaluation
 
+Method `keywords` (`insights/classify.py`, `insights/topics.py`), classifier revision 3.
+
+There are two evaluations. **The one on real reviews (first) is the one to trust.** The self-labelled set (appendix) is
+kept as a regression check because it is optimistic.
+
+## 1. Real reviews, labelled independently (100 cases)
+
+**Sample.** 100 real English reviews that have written text, drawn at random (seed 7, `scripts/make_gold_sample.py`),
+33 or 34 from each of Olympic Paddington, Potts Point and Darling Harbour (Central Sydney had no data yet). E-mail
+addresses and phone numbers were masked and no reviewer identity is present. Reviews in other languages are excluded
+because the keyword method is English only (about 20% of reviews).
+
+**Labels.** Written by a separate annotator that never saw the classifier's code or output, following a fixed written
+rule: label what a careful reader would tag, by meaning rather than by which box the guest typed in. The annotator is
+an AI model, not a person, so these labels are an independent opinion, not ground truth. A human should spot-check
+a sample before anyone quotes the numbers externally. The file is `tests/fixtures/real_gold_labels.json`
+(`note` fields mark ambiguous cases and guests who used the wrong box).
+
+**Split.** To avoid fooling ourselves, the first 50 cases are the **dev half** (keywords were tuned by looking at its
+mistakes) and the last 50 are the **held-out test half** (never inspected while tuning, only scored).
+Scores below count a prediction as correct only if topic and polarity both match, per review.
+
+### Result on the held-out test half
+
+| | Before tuning | After tuning |
+|---|---|---|
+| Precision | 0.79 | **0.84** |
+| Recall | 0.72 | **0.76** |
+| F1 | 0.75 | **0.80** |
+
+After tuning, per topic on the held-out half:
+
+```
+topic             TP  FP  FN  precision  recall     F1
+cleanliness       18   2   2       0.90    0.90   0.90
+check_in          10   3   5       0.77    0.67   0.71
+staff             19   3   8       0.86    0.70   0.78
+noise              7   1   1       0.88    0.88   0.88
+facilities        17   3   7       0.85    0.71   0.77
+location          19   0   3       1.00    0.86   0.93
+room_condition    12   6   7       0.67    0.63   0.65
+value              3   2   0       0.60    1.00   0.75
+OVERALL          105  20  33       0.84    0.76   0.80
+```
+
+The dev half went from F1 0.89 to 0.92. That gain is partly memorisation, which is why it is not the headline.
+The held-out gain is the honest one. Small topics (value, noise) have very few cases, so their percentages move a lot
+on one review.
+
+### What was changed (all derived from dev-half mistakes)
+
+- Meals (breakfast, lunch, dinner, food) and bathroom amenities or availability ("not enough toilets", "no mirror")
+  now count as **facilities**. Bare "shower" and "toilet" no longer mean **room condition**, because "not enough showers"
+  is a facility problem; "the shower was broken" is still caught through "broken".
+- "Spacious", "roomy" and "cosy" count as room condition praise.
+- A bare mention of staff, reception or service inside a *complaint* only counts as a **staff** complaint if the clause
+  also says something negative. "...which I did inform the virtual receptionist about" is a cleanliness complaint, not
+  a staff one. Real staff complaints ("receptionist was rude", "no staff on site", "verbally assaulted by staff") are kept
+  and are covered by tests.
+
+### Where it is still weak (held-out half)
+
+- **Room condition** (precision 0.67, recall 0.63): the topic overlaps with facilities and cleanliness, and the labeller
+  and the keywords draw the line in different places for bathrooms, beds and "comfortable".
+- **Check-in** (recall 0.67): guests describe it indirectly ("had to wait for someone", "couldn't get in") and
+  "didn't have to worry about check-in" is read as negated.
+- **Staff** (recall 0.70) and **facilities** (recall 0.71): many complaints use words not in the lists.
+- Sarcasm, complaints typed into the "liked" box, and non-English text are not handled (see README).
+
+### How to reproduce
+
+```
+python scripts/make_gold_sample.py --db data/reviews.db --n 100 --seed 7 --out data/raw/gold_sample.json
+python scripts/evaluate_classifier.py tests/fixtures/real_gold_labels.json --split test
+python scripts/evaluate_classifier.py tests/fixtures/real_gold_labels.json --split dev
+```
+
+Caveats to keep in mind: 100 reviews, three hotels, English only, one annotator, and a held-out half of only 50 cases.
+Treat the numbers as "roughly 0.8 F1, noticeably weaker on room condition", not as a precise measurement.
+
+## Appendix: the earlier self-labelled set (49 cases)
+
+Written and labelled by the classifier's own author (5 real anonymised reviews plus 44 invented cases), so it flatters the
+classifier. After tuning it scores precision 0.90, recall 1.00, F1 0.95 (it scored 0.87 / 1.00 / 0.93 before), which at
+least shows the tuning did not break the cases that were already right. Original notes follow.
+
+
 Taxonomy version `1`, method `keywords` (`insights/classify.py`, `insights/topics.py`).
 Reproduce with `python scripts/evaluate_classifier.py` (reads `tests/fixtures/gold_labels.json`).
 

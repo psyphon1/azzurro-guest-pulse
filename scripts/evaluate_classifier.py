@@ -92,9 +92,25 @@ def format_report(report: Report) -> str:
     return "\n".join(lines)
 
 
+def split_cases(cases: list[dict], split: str | None) -> list[dict]:
+    """The first half is the DEV half (keywords may be tuned against it); the second half is the held-out TEST half
+    (only ever looked at to report results). Splitting by position keeps it reproducible and independent of the content."""
+    half = len(cases) // 2
+    if split == "dev":
+        return cases[:half]
+    if split == "test":
+        return cases[half:]
+    return cases
+
+
 def main(argv: list[str]) -> int:
-    path = Path(argv[1]) if len(argv) > 1 else DEFAULT_GOLD
-    cases = json.loads(path.read_text())
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    split = None
+    if "--split" in argv:
+        split = argv[argv.index("--split") + 1]
+        args = [a for a in args if a != split]
+    path = Path(args[0]) if args else DEFAULT_GOLD
+    cases = split_cases(json.loads(path.read_text()), split)
     print(format_report(evaluate(cases)))
     return 0
 

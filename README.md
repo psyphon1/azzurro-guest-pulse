@@ -189,11 +189,11 @@ without changing anything downstream.
 
 ### How accurate is it?
 
-On a 49-case hand-labelled set the classifier scores precision 0.87 and recall 1.00 overall (weakest topic:
-room condition, precision 0.56). See `docs/evaluation.md`. Be careful with those numbers: the set is small
-and was labelled by the author of the classifier, so they are optimistic. Re-run
-`python scripts/evaluate_classifier.py <gold_file>` on a larger labelled sample of real reviews before
-trusting fine distinctions.
+Scored against 100 real reviews labelled independently (a separate annotator that never saw the classifier), on a
+held-out half that was not used for tuning: **precision 0.84, recall 0.76, F1 0.80**. Weakest topic: room condition
+(F1 0.65). Details, the tuning that was done and the caveats (100 reviews, English only, one AI annotator, so a human
+spot-check is still advisable) are in `docs/evaluation.md`. An earlier self-labelled set scored higher (F1 0.95) and
+should be ignored as evidence of real accuracy.
 
 Known weaknesses:
 

@@ -831,7 +831,7 @@ def test_unicode_evasion_does_not_flip_negation(evasive):
 
 def test_unicode_evasion_in_every_topic_keyword_family():
     assert ("noise", "negative") in tag_set(None, "very n​oisy at night")
-    assert ("staff", "negative") in tag_set(None, "the staff were гude and rуde".replace("гude and ", ""))
+    assert ("staff", "negative") in tag_set(None, "the staff were rud\u0435")  # Cyrillic е inside 'rude': a genuine look-alike
     assert ("value", "negative") in tag_set(None, "ｏｖｅｒｐｒｉｃｅｄ")
     assert ("cleanliness", "positive") in tag_set("spotl​ess", None)
 

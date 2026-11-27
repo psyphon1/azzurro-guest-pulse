@@ -1,3 +1,4 @@
+import pytest
 from insights.classify import TopicTag, classify_review
 from insights.topics import TAXONOMY_VERSION, TOPICS
 
@@ -199,3 +200,74 @@ def test_gold_file_is_well_formed_and_large_enough():
         assert set(c) >= {"id", "liked", "disliked", "expected"}
         for topic, polarity in c["expected"]:
             assert topic in TOPICS and polarity in ("positive", "negative")
+
+
+# ---------------------------------------------------------------- evaluation script: dev/test split
+def test_evaluate_script_can_score_only_the_dev_or_the_test_half(tmp_path, capsys):
+    import json
+    from scripts.evaluate_classifier import main
+
+    cases = [{"id": f"c{i}", "liked": "Great location", "disliked": "", "expected": [["location", "positive"]]} for i in range(10)]
+    path = tmp_path / "gold.json"
+    path.write_text(json.dumps(cases))
+
+    main(["x", str(path), "--split", "dev"])
+    assert "Gold cases: 5" in capsys.readouterr().out
+    main(["x", str(path), "--split", "test"])
+    assert "Gold cases: 5" in capsys.readouterr().out
+    main(["x", str(path)])
+    assert "Gold cases: 10" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- lessons from real reviews (dev half only)
+def _tagged(liked="", disliked=""):
+    from insights.classify import classify_review
+    return {(t.topic, t.polarity) for t in classify_review(liked, disliked)}
+
+
+@pytest.mark.parametrize("liked", ["Free lunch", "Having delicious dinner every night", "The meals were good", "Great food"])
+def test_meals_count_as_facilities(liked):
+    assert ("facilities", "positive") in _tagged(liked=liked)
+
+
+def test_bathroom_availability_is_facilities_not_room_condition():
+    got = _tagged(disliked="Not nearly enough bathrooms; there were only 4 individual toilets and showers for the whole hostel.")
+    assert ("facilities", "negative") in got
+    assert ("room_condition", "negative") not in got
+
+
+def test_missing_bathroom_amenity_is_facilities():
+    assert ("facilities", "negative") in _tagged(disliked="The restroom I used didn't have a mirror.")
+
+
+def test_a_broken_fitting_is_still_room_condition():
+    assert ("room_condition", "negative") in _tagged(disliked="The shower was broken.")
+
+
+@pytest.mark.parametrize("liked", ["The rooms were spacious and cozy", "Spacious room"])
+def test_room_size_and_comfort_praise_is_room_condition(liked):
+    assert ("room_condition", "positive") in _tagged(liked=liked)
+
+
+def test_mentioning_reception_while_complaining_about_something_else_is_not_a_staff_complaint():
+    got = _tagged(disliked="There was a kettle, but no cups and cockroaches, which I did inform the virtual receptionist about.")
+    assert ("cleanliness", "negative") in got and ("facilities", "negative") in got
+    assert ("staff", "negative") not in got
+
+
+def test_staff_mentioned_only_as_the_ones_who_clean_up_is_not_a_staff_complaint():
+    assert ("staff", "negative") not in _tagged(disliked="Guests left huge cooking messes for staff to clean up.")
+
+
+@pytest.mark.parametrize("text", [
+    "The receptionist was rude.", "No staff on site.", "Verbally assaulted by staff.",
+    "The staff were absolutely disgraceful.", "Reception was slow and unhelpful.", "No face-to-face contact with the staff.",
+    "Not worth the service you get.",
+])
+def test_real_staff_complaints_are_still_found(text):
+    assert ("staff", "negative") in _tagged(disliked=text)
+
+
+def test_staff_praise_is_unaffected_by_the_complaint_rule():
+    assert ("staff", "positive") in _tagged(liked="The staff were friendly and welcoming.")
+    assert ("staff", "positive") in _tagged(liked="Reception helped with our luggage")
