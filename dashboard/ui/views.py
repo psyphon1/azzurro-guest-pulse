@@ -13,14 +13,15 @@ from plotly.subplots import make_subplots
 
 from dashboard.ui import data as D
 from dashboard.ui.privacy import mask_pii, mask_profanity
-from dashboard.ui.style import (BAD, GOOD, INK, LINE, TEAL, TOKENS, badge, clean_text, esc, one_line,
+from dashboard.ui.style import (BAD, GOOD, INK, LINE, MUTED, TEAL, TOKENS, badge, clean_text, esc, one_line,
                                 plain_text)
 from insights import metrics as m
 from insights.classify import is_low_signal
 
 PAGE_SIZE = 20
 POS_COL, MIX_COL, NEG_COL = GOOD, TOKENS["mixed"], BAD
-NAV = [("overview", "Overview"), ("hotels", "Hotels"), ("trends", "Trends"), ("topics", "Topics"), ("feed", "Feed")]
+NAV = [("overview", "Overview"), ("hotels", "Hotels"), ("trends", "Trends"), ("replies", "Replies & safety"),
+       ("guests", "Guests"), ("topics", "Topics"), ("feed", "Feed")]
 
 
 def html(markup: str) -> None:
@@ -415,6 +416,135 @@ def render_topics(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date
                             key=f"tb_{slug}_{polarity}")
         if not shown:
             st.caption("Nothing to compare yet.")
+    render_impact(df[(df["review_date"] >= pd.Timestamp(start)) & (df["review_date"] <= pd.Timestamp(end))],
+                  topics, D.topic_labels())
+
+
+# --- KPI charts: what costs points, replies, safety, guests ------------------------------------------------------
+HOTEL_COLOURS = [TOKENS["accent"], "#7FA3C9", "#3B4A55", "#A9B7C2", "#5B7F9F"]     # one hue, different shades
+FEW_REVIEWS_HINT = "Few reviews in this period: pick 30 days or All time for a fuller picture."
+
+
+def render_impact(df_range: pd.DataFrame, topics: pd.DataFrame, labels: dict[str, str]) -> None:
+    st.markdown("**What costs us points**", help="Average score of reviews that complain about a topic, compared "
+                "with every other review in the period. The biggest gap is the problem that hurts the score most.")
+    imp = D.topic_impact(df_range, topics, labels)
+    if imp.empty:
+        st.caption("Not enough complaints in this period to compare.")
+        return
+    imp = imp[imp["delta"] < 0]
+    # Topics resting on enough reviews first (biggest cost first), then the small samples.
+    imp = pd.concat([imp[imp["n"] >= D.SMALL_SAMPLE], imp[imp["n"] < D.SMALL_SAMPLE]]).head(8)
+    if imp.empty:
+        st.caption("No complaint topic lowers the score in this period.")
+        return
+    if len(df_range) < 2 * D.SMALL_SAMPLE:
+        st.caption(FEW_REVIEWS_HINT)
+    imp = imp.iloc[::-1]
+    text = [f"{r.delta:+.1f} pts  ({r.avg_with:.1f} vs {r.avg_without:.1f}, {r.n} review{'s' if r.n != 1 else ''})"
+            + (" small sample" if r.n < D.SMALL_SAMPLE else "") for r in imp.itertuples()]
+    fig = go.Figure(go.Bar(x=imp["delta"], y=imp["label"], orientation="h", text=text, textposition="outside",
+                           marker_color=[BAD if n >= D.SMALL_SAMPLE else TOKENS["bad_bg"] for n in imp["n"]],
+                           marker_line=dict(color=BAD, width=1), cliponaxis=False,
+                           hovertemplate="%{y}: %{x:+.1f} points<extra></extra>"))
+    lo = float(imp["delta"].min())
+    fig.update_xaxes(range=[lo * 2.2, 0.2], zeroline=True, zerolinecolor=LINE, title_text="Points below other reviews")
+    st.plotly_chart(plotly_layout(fig, 60 + 36 * len(imp)), width="stretch", key="impact")
+
+
+def render_replies_and_safety(df: pd.DataFrame, df_range: pd.DataFrame, topics: pd.DataFrame,
+                              start: date, end: date) -> None:
+    st.header("Replies & safety", anchor="replies")
+    left, right = st.columns([1.6, 1])
+    with left:
+        st.markdown("**Negative reviews and replies per week**", help="Bars: negative reviews each week, split into "
+                    "replied (green) and not replied (red, crossed). Line: reply rate. Dotted line: 90% target.")
+        w = D.reply_weekly(df, end, weeks=12)
+        if w["negatives"].sum() == 0:
+            st.caption("No negative reviews in the last 12 weeks.")
+        else:
+            w["label"] = w["week_start"].dt.strftime("%d %b")
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            fig.add_bar(x=w["label"], y=w["replied"], name="Replied", marker_color=GOOD,
+                        hovertemplate="Week of %{x}: %{y} replied<extra></extra>")
+            fig.add_bar(x=w["label"], y=w["unreplied"], name="No reply",
+                        marker=dict(color=BAD, pattern=dict(shape="x", fillmode="overlay",
+                                                            fgcolor="rgba(255,255,255,.6)", solidity=0.25)),
+                        text=w["unreplied"].where(w["unreplied"] > 0, None), textposition="inside",
+                        hovertemplate="Week of %{x}: %{y} without a reply<extra></extra>")
+            fig.add_scatter(x=w["label"], y=w["rate"], mode="lines+markers", line=dict(color=TEAL, width=2),
+                            connectgaps=False, secondary_y=True, hovertemplate="Reply rate %{y}%<extra></extra>")
+            fig.add_hline(y=90, line_dash="dot", line_color=MUTED, secondary_y=True)
+            fig.update_layout(barmode="stack")
+            fig.update_xaxes(type="category")
+            fig.update_yaxes(title_text="Negative reviews", secondary_y=False)
+            fig.update_yaxes(range=[0, 105], tickvals=[0, 25, 50, 75, 100], title_text="Reply rate %", showgrid=False,
+                             secondary_y=True)
+            st.plotly_chart(plotly_layout(fig), width="stretch", key="replies_week")
+            html('<div class="az-legend"><span class="az-good">&#9632; Replied</span>'
+                 '<span class="az-bad">&#9632; No reply</span><span class="accent">&#9644; Reply rate</span></div>')
+    with right:
+        st.markdown("**Reply rate by hotel**", help="Share of negative reviews in the selected period that have a "
+                    "hotel reply.")
+        h = D.reply_by_hotel(df, start, end)
+        if h.empty:
+            st.caption("No negative reviews in this period.")
+        else:
+            text = [f"{r.rate}% ({r.replied} of {r.negatives})" for r in h.itertuples()]
+            fig = go.Figure(go.Bar(x=h["rate"], y=h["property_name"], orientation="h", text=text,
+                                   textposition="outside", cliponaxis=False,
+                                   marker_color=[GOOD if r >= 90 else TOKENS["mixed"] if r >= 50 else BAD
+                                                 for r in h["rate"]],
+                                   hovertemplate="%{y}: %{x}% replied<extra></extra>"))
+            fig.add_vline(x=90, line_dash="dot", line_color=MUTED)
+            fig.update_xaxes(range=[0, 140], visible=False)
+            st.plotly_chart(plotly_layout(fig, 60 + 44 * len(h)), width="stretch", key="replies_hotel")
+    st.markdown("**Safety issues per month**", help="Reviews that mention pests, mould, fire or electrical risk, "
+                "or theft, per month and hotel (last 12 months).")
+    m = D.safety_monthly(df, topics, end, months=12)
+    if m.empty:
+        st.caption("No safety issues mentioned in the last 12 months.")
+        return
+    months = pd.period_range(end=pd.Timestamp(end).to_period("M"), periods=12, freq="M").to_timestamp()
+    fig = go.Figure()
+    for i, (name, g) in enumerate(m.groupby("property_name")):
+        series = g.set_index("month")["count"].reindex(months, fill_value=0)
+        fig.add_bar(x=[d.strftime("%b %Y") for d in months], y=series.values, name=name,
+                    marker_color=HOTEL_COLOURS[i % len(HOTEL_COLOURS)],
+                    hovertemplate=f"{esc(name)}<br>%{{x}}: %{{y}} reviews<extra></extra>")
+    fig.update_layout(barmode="stack", showlegend=True, legend=dict(orientation="h", y=1.12, x=0))
+    fig.update_xaxes(type="category")
+    fig.update_yaxes(title_text="Reviews", dtick=1)
+    fig = plotly_layout(fig, 300)
+    fig.update_layout(showlegend=True)
+    st.plotly_chart(fig, width="stretch", key="safety_month")
+
+
+def _segment_chart(seg: pd.DataFrame, key: str) -> None:
+    seg = seg.iloc[::-1].copy()
+    seg["segment"] = [x if len(x) <= 30 else x[:29] + "…" for x in seg["segment"]]
+    text = [f"{r.avg:.1f} from {r.n} reviews, {r.pct_negative}% negative" for r in seg.itertuples()]
+    colours = [GOOD if a >= m.POSITIVE_FROM else TOKENS["mixed"] if a >= m.NEGATIVE_BELOW else BAD for a in seg["avg"]]
+    fig = go.Figure(go.Bar(x=seg["avg"], y=seg["segment"], orientation="h", text=text, textposition="outside",
+                           cliponaxis=False, marker_color=colours,
+                           hovertemplate="%{y}: average %{x:.1f}<extra></extra>"))
+    fig.update_xaxes(range=[0, 22], visible=False)
+    st.plotly_chart(plotly_layout(fig, 60 + 38 * len(seg)), width="stretch", key=key)
+
+
+def render_guests(df_range: pd.DataFrame) -> None:
+    st.header("Guests", anchor="guests")
+    st.caption(f"Which guests are least happy. Groups with fewer than {D.SMALL_SAMPLE} reviews are left out.")
+    left, right = st.columns(2)
+    for col, column, title in ((left, "traveller_type", "By traveller type"), (right, "room_type", "By room type")):
+        with col:
+            st.markdown(f"**{title}**", help="Average score (bar) with the number of reviews and the share of "
+                        "negative ones. Least happy at the top.")
+            seg = D.segment_scores(df_range, column)
+            if seg.empty:
+                st.caption("Not enough reviews in this period. " + FEW_REVIEWS_HINT)
+            else:
+                _segment_chart(seg, f"seg_{column}")
 
 
 # --- feed --------------------------------------------------------------------------------------------------------

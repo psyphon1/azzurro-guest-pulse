@@ -145,6 +145,7 @@ h3 { font-size: 16px !important; font-weight: 650 !important; }
 /* ---- charts and topics ------------------------------------------------------------------------------------------- */
 .az-legend { font-size: var(--fs-meta); display: flex; gap: var(--s2); }
 .az-legend .mixed { color: var(--warn) !important; font-weight: 650; }
+.az-legend .accent { color: var(--accent) !important; font-weight: 650; }
 
 /* ---- review feed --------------------------------------------------------------------------------------------------- */
 [data-testid="stExpander"] details { border: 0 !important; background: transparent; }

@@ -617,3 +617,80 @@ def apply_preset(preset, valid_topics: set[str], valid_slugs: set[str]) -> tuple
 
 def safety_keys(chips: dict) -> set[str]:
     return {k for k, tags in chips.items() if any(t == "safety" and p == "negative" for t, p, _ in tags)}
+
+
+# --- KPI charts: what costs points, reply backlog, guest segments, safety by month -------------------------------
+def topic_impact(df: pd.DataFrame, topics: pd.DataFrame, labels: dict[str, str]) -> pd.DataFrame:
+    """Per complaint topic: average score of reviews that complain about it vs every other review in `df`.
+    Sorted by the biggest cost first (most negative delta)."""
+    cols = ["topic", "label", "n", "avg_with", "avg_without", "delta"]
+    if df is None or df.empty or topics is None or len(topics) == 0:
+        return pd.DataFrame(columns=cols)
+    neg = topics[(topics["polarity"] == "negative") & topics["review_key"].isin(df["review_key"])]
+    rows = []
+    for tid, keys in neg.groupby("topic")["review_key"]:
+        hit = df["review_key"].isin(set(keys))
+        if not hit.any() or hit.all():
+            continue
+        w, wo = float(df.loc[hit, "rating"].mean()), float(df.loc[~hit, "rating"].mean())
+        rows.append({"topic": tid, "label": labels.get(tid, tid), "n": int(hit.sum()), "avg_with": round(w, 1),
+                     "avg_without": round(wo, 1), "delta": round(w - wo, 1)})
+    out = pd.DataFrame(rows, columns=cols)
+    return out.sort_values(["delta", "n"], ascending=[True, False], kind="stable").reset_index(drop=True)
+
+
+def reply_weekly(df: pd.DataFrame, end: date, weeks: int = 12) -> pd.DataFrame:
+    """Negative reviews per Monday-Sunday week (the last `weeks` weeks up to `end`) and how many got a reply."""
+    first = monday_of(end) - timedelta(weeks=weeks - 1)
+    out = []
+    for i in range(weeks):
+        w = first + timedelta(weeks=i)
+        neg = _window(df, w, w + timedelta(days=6))
+        neg = neg[neg["band"] == "negative"]
+        n, r = len(neg), int(neg["has_reply"].sum())
+        out.append({"week_start": pd.Timestamp(w), "negatives": n, "replied": r, "unreplied": n - r,
+                    "rate": round(100 * r / n) if n else None})
+    return pd.DataFrame(out)
+
+
+def reply_by_hotel(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
+    neg = _window(df, start, end)
+    neg = neg[neg["band"] == "negative"]
+    g = neg.groupby("property_name").agg(negatives=("review_key", "size"), replied=("has_reply", "sum")).reset_index()
+    g["replied"] = g["replied"].astype(int)
+    g["rate"] = (100 * g["replied"] / g["negatives"]).round().astype(int)
+    return g.sort_values("rate", kind="stable").reset_index(drop=True)
+
+
+def segment_scores(df: pd.DataFrame, column: str, min_n: int = SMALL_SAMPLE, top: int = 8) -> pd.DataFrame:
+    """Average score and % negative per value of `column` (traveller type, room type), least happy first.
+    Groups with fewer than `min_n` reviews are left out (one guest would decide them)."""
+    cols = ["segment", "n", "avg", "pct_negative"]
+    if df is None or df.empty or column not in df.columns:
+        return pd.DataFrame(columns=cols)
+    seg = df[column].fillna("").astype(str).str.strip()
+    d = df.assign(_seg=seg)[seg != ""]
+    g = d.groupby("_seg").agg(n=("rating", "size"), avg=("rating", "mean"),
+                              neg=("band", lambda b: int((b == "negative").sum()))).reset_index()
+    g = g[g["n"] >= min_n]
+    if g.empty:
+        return pd.DataFrame(columns=cols)
+    g = g.sort_values("n", ascending=False).head(top)
+    out = pd.DataFrame({"segment": g["_seg"], "n": g["n"].astype(int), "avg": g["avg"].round(1),
+                        "pct_negative": (100 * g["neg"] / g["n"]).round().astype(int)})
+    return out.sort_values(["avg", "n"], ascending=[True, False], kind="stable").reset_index(drop=True)
+
+
+def safety_monthly(df: pd.DataFrame, topics: pd.DataFrame, end: date, months: int = 12) -> pd.DataFrame:
+    """Reviews with a safety complaint per calendar month and hotel, for the `months` months up to `end`."""
+    cols = ["month", "property_name", "count"]
+    if df is None or df.empty or topics is None or len(topics) == 0:
+        return pd.DataFrame(columns=cols)
+    keys = set(topics.loc[(topics["topic"] == "safety") & (topics["polarity"] == "negative"), "review_key"])
+    first = (pd.Timestamp(end).to_period("M") - (months - 1)).to_timestamp()
+    hit = df[df["review_key"].isin(keys) & (df["review_date"] >= first) & (df["review_date"] <= pd.Timestamp(end))]
+    if hit.empty:
+        return pd.DataFrame(columns=cols)
+    g = hit.assign(month=hit["review_date"].dt.to_period("M").dt.to_timestamp()) \
+        .groupby(["month", "property_name"]).size().reset_index(name="count")
+    return g[cols]

@@ -144,6 +144,8 @@ def render_dashboard(db_path, bundle) -> None:
     V.render_hotels(rows, sel_nodata, sel_slugs)
     trend_start = min(start, D.monday_of(end) - timedelta(weeks=7))
     V.render_trends(m.weekly_trend(df, trend_start, end), nodata_names)
+    V.render_replies_and_safety(df, df_range, topics, start, end)
+    V.render_guests(df_range)
     V.render_topics(df, topics, start, end, [(s, name_by_slug.get(s, s)) for s in covered], topics_ready,
                     nodata_names)
 
