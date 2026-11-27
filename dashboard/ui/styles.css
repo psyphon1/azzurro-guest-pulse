@@ -45,16 +45,17 @@ h3 { font-size: 16px !important; font-weight: 650 !important; }
 
 /* ---- sticky filter bar and section nav -------------------------------------------------------------------------- */
 .st-key-filters { position: sticky; top: 3.75rem; z-index: 990; background: var(--paper);
-  padding: var(--s1) 0; border-bottom: 1px solid var(--line); }
+  padding: var(--s1) 0 var(--s2) 0; border-bottom: 1px solid var(--line); }
 .st-key-filters [data-testid="stHorizontalBlock"] { flex-wrap: nowrap; gap: var(--s2); }
 .st-key-filters [data-testid="stBaseButton-secondary"] { height: 40px; }
 .st-key-filters [data-testid="stButtonGroup"] { flex-wrap: nowrap; }
 .st-key-filters [data-testid="stButtonGroup"] button { padding: 0 var(--s1); min-height: 40px; white-space: nowrap; }
 .st-key-filters [data-testid="stButtonGroup"] button p { font-size: 13px !important; }
-.az-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); margin-top: var(--s1); }
+.az-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); margin-top: var(--s1);
+  padding-bottom: var(--s1); min-height: 32px; line-height: 24px; }
 .az-nav .lead { font-size: var(--fs-meta); font-weight: 600; color: var(--muted) !important; }
-.az-nav a { font-size: 13px; font-weight: 600; color: var(--accent) !important; text-decoration: none;
-  padding: 2px var(--s1); border-radius: var(--pill); background: var(--accent-bg); }
+.az-nav a { display: inline-block; font-size: 13px; font-weight: 600; line-height: 24px; color: var(--accent) !important;
+  text-decoration: none; padding: 0 12px; border-radius: var(--pill); background: var(--accent-bg); }
 .az-nav a:hover { text-decoration: underline; }
 
 /* ---- banners ----------------------------------------------------------------------------------------------------- */
