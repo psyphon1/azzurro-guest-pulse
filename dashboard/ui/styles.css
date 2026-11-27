@@ -1,0 +1,171 @@
+/* Guest Pulse dashboard styles. The only stylesheet; loaded once by dashboard/ui/style.py.
+   Tokens: 8px spacing grid, radius 12, one accent (blue); green/amber/red only for sentiment. */
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url('app/static/fonts/inter-latin-wght-normal.woff2') format('woff2');
+}
+:root {
+  color-scheme: light;
+  --ink: #13252F; --muted: #56666E; --paper: #F5F7F9; --surface: #FFFFFF; --line: #DDE3E8; --line-strong: #B7C3CC;
+  --accent: #1D64B0; --accent-dark: #164F8C; --accent-bg: #EAF1FA;
+  --good: #17784A; --good-bg: #E6F2EB; --warn: #8A5300; --warn-bg: #FFF3DA; --warn-line: #EBCB82;
+  --bad: #B3362C; --bad-bg: #FBE9E6; --bad-line: #E5ADA7;
+  --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s5: 40px;
+  --radius: 12px; --pill: 999px;
+  --fs-title: 28px; --fs-section: 20px; --fs-body: 14px; --fs-meta: 12px;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ---- page ---------------------------------------------------------------------------------------------------- */
+.stApp { background: var(--paper); color: var(--ink); }
+.stApp, .stApp p, .stApp label, .stApp li, .stApp input, .stApp button, .stApp textarea,
+.stApp span:not([data-testid="stIconMaterial"]):not(.material-symbols-rounded) { font-family: var(--font); }
+.stApp, .stApp p, .stApp label, .stApp li, .stApp span { color: var(--ink); }
+.stApp p, .stApp li, .stApp label { font-size: var(--fs-body); }
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] { display: none; }
+.block-container { padding-top: 64px; max-width: 1200px; }
+h1, h2, h3 { font-family: var(--font); color: var(--ink); letter-spacing: -0.01em; }
+h1, h1 span { font-size: var(--fs-title) !important; font-weight: 700 !important; padding: 0 !important; }
+h2, h2 span { font-size: var(--fs-section) !important; }
+h2 { font-weight: 650 !important; margin-top: var(--s5) !important; padding: 0 0 var(--s1) 0 !important;
+  scroll-margin-top: 160px; }
+h3 { font-size: 16px !important; font-weight: 650 !important; }
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {
+  color: var(--muted) !important; font-size: var(--fs-meta) !important; opacity: 1 !important; }
+:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+
+/* ---- buttons --------------------------------------------------------------------------------------------------- */
+[data-testid="stBaseButton-primary"] { background: var(--accent) !important; border-color: var(--accent) !important; }
+[data-testid="stBaseButton-primary"] * { color: #FFFFFF !important; font-weight: 650 !important; }
+[data-testid="stBaseButton-primary"]:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; }
+[data-testid="stBaseButton-secondary"] { background: var(--surface) !important; border: 1px solid var(--line-strong) !important; }
+[data-testid="stBaseButton-secondary"] * { color: var(--ink) !important; font-weight: 600 !important; }
+[data-testid="stBaseButton-secondary"]:hover { border-color: var(--accent) !important; }
+[data-testid="stBaseButton-secondary"]:hover * { color: var(--accent) !important; }
+
+/* ---- sticky filter bar and section nav -------------------------------------------------------------------------- */
+.st-key-filters { position: sticky; top: 3.75rem; z-index: 990; background: var(--paper);
+  padding: var(--s1) 0; border-bottom: 1px solid var(--line); }
+.st-key-filters [data-testid="stHorizontalBlock"] { flex-wrap: nowrap; gap: var(--s2); }
+.st-key-filters [data-testid="stBaseButton-secondary"] { height: 40px; }
+.st-key-filters [data-testid="stButtonGroup"] { flex-wrap: nowrap; }
+.st-key-filters [data-testid="stButtonGroup"] button { padding: 0 var(--s1); min-height: 40px; white-space: nowrap; }
+.st-key-filters [data-testid="stButtonGroup"] button p { font-size: 13px !important; }
+.az-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); margin-top: var(--s1); }
+.az-nav .lead { font-size: var(--fs-meta); font-weight: 600; color: var(--muted) !important; }
+.az-nav a { font-size: 13px; font-weight: 600; color: var(--accent) !important; text-decoration: none;
+  padding: 2px var(--s1); border-radius: var(--pill); background: var(--accent-bg); }
+.az-nav a:hover { text-decoration: underline; }
+
+/* ---- banners ----------------------------------------------------------------------------------------------------- */
+.az-banner-demo { background: #22313A; color: #FFE08A !important; font-weight: 700; padding: var(--s1) var(--s2);
+  border-radius: var(--s1); margin-bottom: var(--s1); }
+.az-banner-demo * { color: #FFE08A !important; }
+.az-list { margin: var(--s1) 0 0 var(--s2); padding: 0; font-size: var(--fs-meta); color: var(--muted); }
+
+/* ---- shared text pieces ------------------------------------------------------------------------------------------- */
+.az-label { font-size: var(--fs-meta); color: var(--muted) !important; font-weight: 600; }
+.az-note { font-size: var(--fs-meta); color: var(--muted) !important; line-height: 1.5; }
+.az-good, .az-up { color: var(--good) !important; font-weight: 650; }
+.az-bad, .az-down { color: var(--bad) !important; font-weight: 650; }
+.az-flat { color: var(--muted) !important; font-weight: 650; }
+.az-badge { display: inline-block; font-size: 11px; font-weight: 650; padding: 1px var(--s1); border-radius: var(--pill);
+  border: 1px solid transparent; white-space: nowrap; }
+.az-badge.warn { background: var(--warn-bg); color: var(--warn) !important; border-color: var(--warn-line); }
+.az-badge.good { background: var(--good-bg); color: var(--good) !important; }
+.az-badge.bad { background: var(--bad-bg); color: var(--bad) !important; border-color: var(--bad-line); }
+.az-badge.neutral { background: #EEF2F4; color: var(--muted) !important; border-color: var(--line); }
+
+/* Equal-height cards inside a row of columns (KPIs, hotels): the column wrappers pass the height down. */
+.st-key-kpis [data-testid="stColumn"] > div, .st-key-kpis [data-testid="stColumn"] [data-testid="stVerticalBlock"],
+.st-key-kpis [data-testid="stColumn"] [data-testid="stElementContainer"],
+.st-key-kpis [data-testid="stColumn"] [data-testid="stMarkdown"],
+.st-key-kpis [data-testid="stColumn"] [data-testid="stMarkdown"] > div,
+.st-key-kpis [data-testid="stColumn"] [data-testid="stMarkdownContainer"],
+.st-key-hotel_cards [data-testid="stColumn"] > div, .st-key-hotel_cards [data-testid="stColumn"] [data-testid="stVerticalBlock"],
+.st-key-hotel_cards [data-testid="stColumn"] [data-testid="stElementContainer"],
+.st-key-hotel_cards [data-testid="stColumn"] [data-testid="stMarkdown"],
+.st-key-hotel_cards [data-testid="stColumn"] [data-testid="stMarkdown"] > div,
+.st-key-hotel_cards [data-testid="stColumn"] [data-testid="stMarkdownContainer"] { height: 100%; }
+.st-key-kpis [data-testid="stHorizontalBlock"], .st-key-hotel_cards [data-testid="stHorizontalBlock"] { align-items: stretch; }
+
+/* ---- KPI cards: four fixed slots, same height ------------------------------------------------------------------- */
+.az-kpi { box-sizing: border-box; min-height: 152px; height: 100%; display: flex; flex-direction: column;
+  padding: var(--s3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.az-kpi .label { font-size: var(--fs-meta); font-weight: 600; color: var(--muted) !important; line-height: 16px; }
+.az-kpi .value { font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; margin-top: var(--s1); }
+.az-kpi .delta { font-size: 13px; line-height: 20px; font-weight: 650; min-height: 20px; }
+.az-kpi .caption { font-size: var(--fs-meta); line-height: 16px; color: var(--muted) !important; margin-top: auto;
+  padding-top: var(--s1); display: flex; gap: var(--s1); align-items: center; flex-wrap: wrap; }
+
+/* ---- Worth a look: a grid of rows ------------------------------------------------------------------------------- */
+.st-key-worth [data-testid="stHorizontalBlock"] { border-top: 1px solid var(--line); padding: 12px 0; gap: var(--s2); }
+.st-key-worth { border-bottom: 1px solid var(--line); gap: 0; }
+.st-key-worth [data-testid="stBaseButton-secondary"] { height: 40px; min-height: 40px; }
+.az-tag { box-sizing: border-box; display: inline-flex; justify-content: center; align-items: center; width: 100%;
+  max-width: 132px; height: 28px; border-radius: var(--pill); font-size: var(--fs-meta); font-weight: 700;
+  white-space: nowrap; }
+.az-tag.safety { background: var(--bad); color: #FFFFFF !important; }
+.az-tag.alert { background: var(--bad-bg); color: var(--bad) !important; }
+.az-tag.good { background: var(--good-bg); color: var(--good) !important; }
+.az-tag.info { background: var(--accent-bg); color: var(--accent) !important; }
+.az-insight-text { line-height: 1.5; }
+.az-slot { height: 40px; }
+
+/* ---- hotel cards: reserved slots, sparkline pinned to the bottom ------------------------------------------------ */
+.az-hotel { box-sizing: border-box; min-height: 248px; height: 100%; display: flex; flex-direction: column;
+  padding: var(--s3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.az-hotel .name { font-size: 15px; font-weight: 650; line-height: 20px; min-height: 20px; }
+.az-hotel .score { font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; margin-top: var(--s1); }
+.az-hotel .score small { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.az-hotel .delta { font-size: 13px; line-height: 20px; min-height: 20px; }
+.az-hotel .count { font-size: var(--fs-meta); line-height: 16px; color: var(--muted) !important; }
+.az-hotel .badge-slot { min-height: 20px; margin-top: var(--s1); }
+.az-hotel .chip-slot { min-height: 22px; margin-top: var(--s1); }
+.az-hotel .spark { margin-top: auto; padding-top: var(--s2); }
+.az-hotel .spark .bars { font-size: 18px; letter-spacing: 1px; color: var(--accent) !important; line-height: 20px; }
+.az-hotel.empty { border: 1.5px dashed var(--line-strong); background: transparent; justify-content: center;
+  align-items: center; text-align: center; gap: var(--s1); }
+.az-hotel.empty * { color: var(--muted) !important; }
+
+/* ---- charts and topics ------------------------------------------------------------------------------------------- */
+.az-legend { font-size: var(--fs-meta); display: flex; gap: var(--s2); }
+.az-legend .mixed { color: var(--warn) !important; font-weight: 650; }
+
+/* ---- review feed --------------------------------------------------------------------------------------------------- */
+[data-testid="stExpander"] details { border: 0 !important; background: transparent; }
+[data-testid="stExpander"] summary { padding: 0 0 var(--s1) 0 !important; }
+[data-testid="stExpander"] summary p { font-size: var(--fs-meta) !important; color: var(--accent) !important; font-weight: 600; }
+.az-row { display: flex; flex-wrap: wrap; gap: var(--s1); align-items: center; padding: var(--s1) 0 4px 0;
+  border-top: 1px solid var(--line); }
+.az-row b, .az-row .az-note { font-size: 13px; }
+.az-row .snip { flex: 1 1 320px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-body); }
+.az-score { font-weight: 700; font-size: 13px; padding: 1px var(--s1); border-radius: var(--pill);
+  font-variant-numeric: tabular-nums; }
+.az-score.good { background: var(--good-bg); color: var(--good) !important; }
+.az-score.warn { background: var(--warn-bg); color: var(--warn) !important; }
+.az-score.bad { background: var(--bad-bg); color: var(--bad) !important; }
+.az-review { line-height: 1.55; }
+.az-review .meta { font-size: var(--fs-meta); color: var(--muted) !important; margin-bottom: var(--s1); }
+.az-liked, .az-disliked, .az-reply { padding: 4px 0 4px 12px; margin: var(--s1) 0; border-left: 3px solid; }
+.az-liked { border-color: var(--good); }
+.az-disliked { border-color: var(--bad); }
+.az-reply { border-color: var(--accent); background: var(--accent-bg); padding: var(--s1) 12px; border-radius: 0 var(--s1) var(--s1) 0; }
+.az-liked .h, .az-disliked .h, .az-reply .h { font-weight: 650; font-size: var(--fs-meta); }
+.az-liked .h { color: var(--good) !important; }
+.az-disliked .h { color: var(--bad) !important; }
+.az-reply .h { color: var(--accent) !important; }
+.az-chip { display: inline-block; font-size: 11px; padding: 1px var(--s1); border-radius: var(--pill); margin-right: 4px;
+  font-weight: 600; white-space: nowrap; }
+.az-chip.neg { background: var(--bad-bg); color: var(--bad) !important; }
+.az-chip.pos { background: var(--good-bg); color: var(--good) !important; }
+.az-chip.safety { background: var(--bad); color: #FFFFFF !important; }
+.az-nocomment { font-style: italic; color: var(--muted) !important; }
+
+@media (max-width: 760px) {
+  .st-key-filters { position: static; }
+  .st-key-filters [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+}

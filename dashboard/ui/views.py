@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 from plotly.subplots import make_subplots
 
 from dashboard.ui import data as D
@@ -105,45 +106,51 @@ def render_health_details(health: pd.DataFrame | None, no_data: dict, skipped: i
         for r in repeated.head(3).itertuples(index=False):
             lines.append(f"{int(r.n)} reviews at {r.property_name} share the same score and text; they are counted.")
     if lines:
-        html("<ul class='az-note'>" + "".join(f"<li>{esc(x)}</li>" for x in lines) + "</ul>")
+        html('<ul class="az-list">' + "".join(f"<li>{esc(x)}</li>" for x in lines) + "</ul>")
     else:
         st.write("All hotels are up to date.")
 
 
 # --- filter bar --------------------------------------------------------------------------------------------------
-def render_filter_bar(all_names: list[str], on_apply, on_clear, today: date) -> None:
-    with st.container(key="az_bar"):
-        with st.form("filters", border=False, enter_to_submit=False):
-            c1, c2, c3, c4 = st.columns([2.5, 2.2, 1.5, 2.0], vertical_alignment="bottom")
-            with c1:
-                st.radio("Period", D.PERIODS, key="f_period", horizontal=True,
-                         help="Weeks run Monday to Sunday, Sydney time.")
-            with c2:
-                st.multiselect("Hotels", all_names, key="f_hotels", placeholder="All hotels")
-            with c3:
-                st.date_input("Custom dates", key="f_custom", format="DD/MM/YYYY",
-                              help="Used when Period is Custom.")
-            with c4:
-                b1, b2 = st.columns(2)
-                b1.form_submit_button("Apply filters", type="primary", on_click=on_apply, key="f_apply",
-                                      use_container_width=True)
-                b2.form_submit_button("Clear filters", on_click=on_clear, key="f_clear", use_container_width=True)
+def period_word(p: str) -> str:
+    return "30 days" if p == "Last 30 days" else p
+
+
+def _show_all_hotels() -> None:
+    st.session_state["feed_hotel"] = None
+
+
+def render_filter_bar(all_names: list[str], on_clear) -> None:
+    """Sticky filter bar. Filters apply as soon as they change; Clear resets them."""
+    with st.container(key="filters"):
+        c1, c2, c3, c4 = st.columns([3, 2, 2, 1], vertical_alignment="bottom")
+        with c1:
+            st.segmented_control("Period", D.PERIODS, key="f_period", selection_mode="single",
+                                 format_func=period_word,
+                                 help="Weeks run Monday to Sunday, Sydney time. 30 days = the last 30 days.")
+        with c2:
+            st.multiselect("Hotels", all_names, key="f_hotels", placeholder="All hotels")
+        with c3:
+            st.date_input("Custom dates", key="f_custom", format="DD/MM/YYYY", help="Used when Period is Custom.")
+        with c4:
+            st.button("Clear", key="f_clear", on_click=on_clear, use_container_width=True,
+                      help="Back to this week, all hotels, no feed filters.")
         links = "".join(f'<a href="#{a}">{esc(t)}</a>' for a, t in NAV)
-        html(f'<div class="az-nav" role="navigation" aria-label="Sections"><span>Jump to</span>{links}</div>')
+        html(f'<div class="az-nav" role="navigation" aria-label="Sections"><span class="lead">Jump to</span>{links}</div>')
 
 
 # --- overview ----------------------------------------------------------------------------------------------------
 def render_kpis(items: list[D.Kpi]) -> None:
-    cols = st.columns(4)
-    for col, k in zip(cols, items):
-        cls = {"good": "az-good", "bad": "az-bad"}.get(k.tone, "az-flat")
-        arrow = "&#9650; " if (k.delta or 0) > 0 else "&#9660; " if (k.delta or 0) < 0 else ""
-        with col:
-            html(f'<div class="az-card"><div class="az-label">{esc(k.label)}</div>'
-                 f'<div class="az-value">{esc(k.value)}</div>'
-                 f'<div class="{cls}" style="font-size:13px">{arrow}{esc(k.delta_text)}</div>'
-                 f'<div class="az-note">{esc(k.caption)}</div>'
-                 f'{small_badge(1) if k.small else ""}</div>')
+    with st.container(key="kpis"):
+        cols = st.columns(4)
+        for col, k in zip(cols, items):
+            cls = {"good": "az-good", "bad": "az-bad"}.get(k.tone, "az-flat")
+            arrow = "&#9650; " if (k.delta or 0) > 0 else "&#9660; " if (k.delta or 0) < 0 else ""
+            with col:
+                html(f'<div class="az-kpi"><div class="label">{esc(k.label)}</div>'
+                     f'<div class="value">{esc(k.value)}</div>'
+                     f'<div class="delta {cls}">{arrow}{esc(k.delta_text)}</div>'
+                     f'<div class="caption"><span>{esc(k.caption)}</span>{small_badge(1) if k.small else ""}</div></div>')
 
 
 def _action_label(action: dict | None) -> str:
@@ -167,19 +174,24 @@ def render_worth_a_look(insights: list, on_action) -> None:
     if not items:
         st.caption("Nothing stands out for this period.")
         return
-    tags = {"alert": "&#9650; Needs attention", "good": "&#10003; Good news", "info": "&#8505; For your info"}
-    for idx, ins in enumerate(items):
-        action = getattr(ins, "action", None)
-        safety = bool(action and action.get("safety"))
-        kind = "safety" if safety else (ins.kind if ins.kind in tags else "info")
-        tag = "Safety" if safety else tags[ins.kind if ins.kind in tags else "info"]
-        left, right = st.columns([5, 1.2], vertical_alignment="center")
-        with left:
-            html(f'<div class="az-insight {kind}"><div class="tag">{tag}</div><div>{esc(ins.text)}</div></div>')
-        with right:
-            if action:
-                st.button(_action_label(action), key=f"act_{idx}", on_click=on_action, args=(dict(action),),
-                          use_container_width=True)
+    tags = {"alert": "Needs attention", "good": "Good news", "info": "For your info"}
+    with st.container(key="worth"):
+        for idx, ins in enumerate(items):
+            action = getattr(ins, "action", None)
+            safety = bool(action and action.get("safety"))
+            kind = "safety" if safety else (ins.kind if ins.kind in tags else "info")
+            tag = "Safety" if safety else tags[kind]
+            c1, c2, c3 = st.columns([1.3, 7, 2.2], vertical_alignment="center")
+            with c1:
+                html(f'<span class="az-tag {kind}">{tag}</span>')
+            with c2:
+                html(f'<div class="az-insight-text">{esc(ins.text)}</div>')
+            with c3:
+                if action:
+                    st.button(_action_label(action), key=f"act_{idx}", on_click=on_action, args=(dict(action),),
+                              use_container_width=True)
+                else:
+                    html('<div class="az-slot"></div>')
 
 
 # --- hotels ------------------------------------------------------------------------------------------------------
@@ -190,25 +202,27 @@ def render_hotels(rows: list[D.HotelRow], no_data: dict, order: list[str]) -> No
     if not slugs:
         st.info("Choose at least one hotel in the filter bar.")
         return
-    cols = st.columns(min(len(slugs), 4))
-    for i, slug in enumerate(slugs):
-        with cols[i % len(cols)]:
-            if slug not in by:
-                nd = no_data[slug]
-                html(f'<div class="az-card empty"><div class="az-name">{esc(nd.name)}</div>'
-                     f'<div class="az-note" style="margin-top:8px">No data, blocked by Booking.com</div></div>')
-                continue
-            r = by[slug]
-            score = "–" if r.avg is None else f"{r.avg:.1f}"
-            chip = (f'<span class="az-chip neg" title="Most mentioned complaint">{esc(r.top_complaint)}</span>'
-                    if r.top_complaint else '<span class="az-note">No complaint topics</span>')
-            html(f'<div class="az-card"><div class="az-name">{esc(r.name)}</div>'
-                 f'<div class="az-value">{score}<small> / 10</small></div>'
-                 f'<div style="font-size:13px">{change_html(r.delta)}</div>'
-                 f'<div class="az-note">{esc(reviews_word(r.n))} (previous period {r.prev_n})</div>'
-                 f'{small_badge(r.n)}<div style="margin-top:8px">{chip}</div>'
-                 f'<div class="az-spark" role="img" aria-label="{esc(r.spark_label)}" title="{esc(r.spark_label)}">'
-                 f'{esc(r.spark)}</div><div class="az-note">last 8 weeks</div></div>')
+    with st.container(key="hotel_cards"):
+        cols = st.columns(min(len(slugs), 4))
+        for i, slug in enumerate(slugs):
+            with cols[i % len(cols)]:
+                if slug not in by:
+                    nd = no_data[slug]
+                    html(f'<div class="az-hotel empty"><div class="name">{esc(nd.name)}</div>'
+                         f'<div class="az-note">No data, blocked by Booking.com</div></div>')
+                    continue
+                r = by[slug]
+                score = "–" if r.avg is None else f"{r.avg:.1f}"
+                chip = (f'<span class="az-chip neg" title="Most mentioned complaint">{esc(r.top_complaint)}</span>'
+                        if r.top_complaint else '<span class="az-note">No complaint topics</span>')
+                html(f'<div class="az-hotel"><div class="name">{esc(r.name)}</div>'
+                     f'<div class="score">{score}<small> / 10</small></div>'
+                     f'<div class="delta">{change_html(r.delta)}</div>'
+                     f'<div class="count">{esc(reviews_word(r.n))} (previous period {r.prev_n})</div>'
+                     f'<div class="badge-slot">{small_badge(r.n)}</div>'
+                     f'<div class="chip-slot">{chip}</div>'
+                     f'<div class="spark"><div class="bars" role="img" aria-label="{esc(r.spark_label)}" '
+                     f'title="{esc(r.spark_label)}">{esc(r.spark)}</div><div class="az-note">last 8 weeks</div></div></div>')
 
 
 # --- trends ------------------------------------------------------------------------------------------------------
@@ -252,9 +266,8 @@ def render_trends(trend: pd.DataFrame, nodata_names: list[str]) -> None:
         fig.update_xaxes(type="category")
         fig.update_yaxes(title_text="Reviews")
         st.plotly_chart(plotly_layout(fig), width="stretch")
-        html('<div class="az-note"><span class="az-good">&#9632; Positive</span> &nbsp; '
-             f'<span style="color:{TOKENS["warn"]};font-weight:650">&#9632; Mixed</span> &nbsp; '
-             '<span class="az-bad">&#9632; Negative</span></div>')
+        html('<div class="az-legend"><span class="az-good">&#9632; Positive</span>'
+             '<span class="mixed">&#9632; Mixed</span><span class="az-bad">&#9632; Negative</span></div>')
 
 
 # --- topics ------------------------------------------------------------------------------------------------------
@@ -369,7 +382,7 @@ def review_detail(r) -> str:
     for col, cls, head in (("liked", "az-liked", "&#10003; Liked"), ("disliked", "az-disliked", "&#10007; Disliked")):
         val = getattr(r, col)
         body = guest_text(val) if isinstance(val, str) and val.strip() and not is_low_signal(val) else \
-            '<i class="az-note">No comment</i>'
+            '<span class="az-nocomment">No comment</span>'
         parts.append(f'<div class="{cls}"><div class="h">{head}</div>{body}</div>')
     if r.has_reply:
         parts.append(f'<div class="az-reply"><div class="h">Hotel reply</div>{guest_text(r.host_reply)}</div>')
@@ -389,6 +402,13 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
         st.session_state["feed_topic"] = topic
         st.session_state["feed_hotel"] = slug
         st.session_state["feed_search"] = ""
+        what = pills + ([labels.get(topic.split(":")[1], topic)] if topic else []) + \
+            ([names.get(slug, slug)] if slug else [])
+        st.success(f"Showing reviews from Worth a look: {esc(', '.join(what)) or 'all'}. Use Clear in the filter bar to reset.")
+    if st.session_state.pop("scroll_to_feed", False):
+        # Jump to this section after a Worth a look button (no external script; runs in the page's own origin).
+        components.html("<script>setTimeout(function(){var e=window.parent.document.getElementById('feed');"
+                        "if(e){e.scrollIntoView({behavior:'smooth',block:'start'});}},400);</script>", height=0)
     topic_opts = {"": "Any topic"}
     if topics_ready:
         for tid, lab in labels.items():
@@ -412,7 +432,7 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
         data = data[data["property"] == slug]
         a, b = st.columns([5, 1], vertical_alignment="center")
         a.caption(f"Showing {esc(names.get(slug, slug))} only.")
-        b.button("Show all hotels", key="feed_hotel_clear", on_click=lambda: st.session_state.update(feed_hotel=None))
+        b.button("Show all hotels", key="feed_hotel_clear", on_click=_show_all_hotels)
     if "Safety" in pills:
         data = data[data["review_key"].isin(D.safety_keys(chips))]
     out = D.filter_feed(data, chips, topic_choice=topic_choice or None, only_negative="Negative" in pills,

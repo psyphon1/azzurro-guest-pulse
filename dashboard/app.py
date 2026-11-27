@@ -57,21 +57,11 @@ except Exception:  # unreadable, corrupt or half-built file: say so politely; th
                "or still being created. Please try again in a minute.")
     st.stop()
 
-def _apply_filters() -> None:
-    """Apply filters button: copy the filter-bar widgets into the applied filters and the URL."""
-    ss = st.session_state
-    custom = ss.get("f_custom")
-    custom = tuple(custom) if isinstance(custom, (tuple, list)) and len(custom) == 2 else None
-    ss["applied"] = {"period": ss.get("f_period", D.DEFAULT_PERIOD), "names": list(ss.get("f_hotels") or []),
-                     "custom": custom}
-    ss["feed_page"] = 1
-
-
 def _clear_filters() -> None:
-    """Clear filters button: back to the default view, everywhere (filter bar, feed, URL)."""
+    """Clear button: back to the default view, everywhere (filter bar, feed, URL)."""
     ss = st.session_state
-    ss["f_period"], ss["f_hotels"] = D.DEFAULT_PERIOD, []
-    ss["applied"] = {"period": D.DEFAULT_PERIOD, "names": [], "custom": None}
+    today = D.today_sydney()
+    ss["f_period"], ss["f_hotels"], ss["f_custom"] = D.DEFAULT_PERIOD, [], (D.monday_of(today), today)
     for key, value in (("feed_pills", []), ("feed_topic", ""), ("feed_search", ""), ("feed_hotel", None),
                        ("feed_page", 1)):
         ss[key] = value
@@ -79,6 +69,7 @@ def _clear_filters() -> None:
 
 def _open_in_feed(action: dict) -> None:
     st.session_state["feed_preset"] = action
+    st.session_state["scroll_to_feed"] = True
 
 
 def render_dashboard(db_path, bundle) -> None:
@@ -97,23 +88,20 @@ def render_dashboard(db_path, bundle) -> None:
 
     V.render_header(db_path, health, no_data, skipped, repeated, len(PROPERTIES))
 
-    # Applied filters: from the URL on the first visit, then only changed by the Apply / Clear buttons.
+    # Filters: from the URL on the first visit, then from the filter bar (they apply as soon as they change).
     ss = st.session_state
-    if "applied" not in ss:
+    if "f_period" not in ss:
         period, slugs, custom = D.parse_query(dict(st.query_params), all_slugs)
-        names = [name_by_slug[s] for s in slugs] if slugs else []
-        ss["applied"] = {"period": period, "names": names, "custom": custom}
-        ss["f_period"], ss["f_hotels"] = period, names
-        if custom:
-            ss["f_custom"] = custom
-    if "f_custom" not in ss:
-        ss["f_custom"] = (D.monday_of(today), today)
-    V.render_filter_bar(all_names, _apply_filters, _clear_filters, today)
-    applied = ss["applied"]
-    period = applied["period"] if applied.get("period") in D.PERIODS else D.DEFAULT_PERIOD
-    sel_names = [n for n in applied.get("names") or [] if n in all_names] or all_names
+        ss["f_period"] = period
+        ss["f_hotels"] = [name_by_slug[s] for s in slugs] if slugs else []
+        ss["f_custom"] = custom or (D.monday_of(today), today)
+    V.render_filter_bar(all_names, _clear_filters)
+    period = ss.get("f_period") if ss.get("f_period") in D.PERIODS else D.DEFAULT_PERIOD
+    picked = ss.get("f_custom")
+    custom = tuple(picked) if isinstance(picked, (tuple, list)) and len(picked) == 2 else None
+    sel_names = [n for n in ss.get("f_hotels") or [] if n in all_names] or all_names
     sel_slugs = [slug_by_name.get(n, n) for n in sel_names]
-    st.query_params.from_dict(D.to_query(period, sel_slugs, all_slugs, applied.get("custom")))
+    st.query_params.from_dict(D.to_query(period, sel_slugs, all_slugs, custom))
 
     if df_all.empty:
         st.info("There are no reviews in the database yet. Run the review collection first "
@@ -123,7 +111,7 @@ def render_dashboard(db_path, bundle) -> None:
         st.stop()
 
     first, last = df_all["review_date"].min().date(), df_all["review_date"].max().date()
-    start, end, focus = D.period_range(period, today, first, last, applied.get("custom"))
+    start, end, focus = D.period_range(period, today, first, last, custom)
     sel_nodata = {s: nd for s, nd in no_data.items() if s in sel_slugs}
     nodata_names = [nd.name for nd in sel_nodata.values()]
     df = df_all[df_all["property"].isin(sel_slugs)]

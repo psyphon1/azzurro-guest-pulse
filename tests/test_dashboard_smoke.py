@@ -230,10 +230,10 @@ PERIOD_ALIASES = {"This week so far": "This week", "Latest full week": "Last wee
 
 
 def pick(at, period=None, hotels=None):
-    """Set the top filter bar and press Apply filters (the page only changes on Apply)."""
+    """Set the top filter bar (filters apply as soon as they change)."""
     if period is not None:
-        at.radio(key="f_period").set_value(PERIOD_ALIASES.get(period, period))
+        at.session_state["f_period"] = PERIOD_ALIASES.get(period, period)
     if hotels is not None:
-        at.multiselect(key="f_hotels").set_value(hotels)
-    at.button(key="f_apply").click().run()
+        at.session_state["f_hotels"] = hotels
+    at.run()
     return at
