@@ -848,3 +848,48 @@ def test_data_health_works_on_a_database_from_before_the_page_cap_existed(tmp_pa
     h = metrics.data_health(path, now=NOW).set_index("property")
 
     assert h.loc["olympic-paddington", "coverage_note"] == ""
+
+
+def test_data_health_explains_a_date_window_run_in_plain_words(tmp_path):
+    path, store, t = _runs_db(tmp_path)
+    store.upsert_reviews([review(f"k{i}", P1) for i in range(40)])
+    t["now"] = datetime(2026, 3, 10, 6, 0, tzinfo=timezone.utc)
+    r = store.start_run(P1, "full")
+    store.finish_run(r, "ok", 4, 40, 0, 0, None, truncated=True, reported_total=4305, max_pages=200,
+                     stop_reason="date_window", since_days=365)
+
+    h = metrics.data_health(path, now=NOW).set_index("property")
+
+    note = h.loc[P1, "coverage_note"]
+    assert "last 365 days" in note and "date window" in note
+    assert "page limit" not in note                      # the real reason, not the secondary one
+    assert bool(h.loc[P1, "truncated"]) is True
+
+
+def test_data_health_page_cap_note_still_works_when_a_stop_reason_exists(tmp_path):
+    path, store, t = _runs_db(tmp_path)
+    store.upsert_reviews([review(f"k{i}", P1) for i in range(30)])
+    r = store.start_run(P1, "full")
+    store.finish_run(r, "ok", 3, 30, 0, 0, None, truncated=True, reported_total=3000, max_pages=3,
+                     stop_reason="page_cap", since_days=None)
+
+    note = metrics.data_health(path, now=NOW).set_index("property").loc[P1, "coverage_note"]
+
+    assert "page limit" in note and "30 of 3,000" in note
+
+
+def test_data_health_keeps_the_page_cap_note_on_a_database_that_has_no_stop_reason_column(tmp_path):
+    import sqlite3
+    path = str(tmp_path / "v1.db")
+    con = sqlite3.connect(path)
+    con.executescript("""CREATE TABLE reviews (review_key TEXT PRIMARY KEY, property TEXT, rating REAL, review_date TEXT);
+        INSERT INTO reviews VALUES ('a','olympic-paddington',5,'2026-03-01'),('b','olympic-paddington',6,'2026-03-02');
+        CREATE TABLE scrape_runs (id INTEGER PRIMARY KEY, property TEXT, mode TEXT, started_at TEXT, finished_at TEXT,
+            status TEXT, pages INTEGER, new INTEGER, updated INTEGER, rejected INTEGER, error TEXT,
+            truncated INTEGER, reported_total INTEGER, max_pages INTEGER);
+        INSERT INTO scrape_runs VALUES (1,'olympic-paddington','full','2026-03-09T00:00:00+00:00','2026-03-09T00:01:00+00:00','ok',2,2,0,0,NULL,1,50,2);""")
+    con.commit(); con.close()
+
+    h = metrics.data_health(path, now=NOW).set_index("property")
+
+    assert "page limit" in h.loc["olympic-paddington", "coverage_note"]

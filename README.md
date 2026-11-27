@@ -229,6 +229,31 @@ search), CSV export and a "How to read this" explanation.
 
 Not verified: layout on small phone screens and the CSV download button were not exercised in an automated test.
 
+## Security and privacy
+
+Review text is untrusted input: any guest can write a review, and the remote site could return anything. Two
+adversarial reviews were carried out, one on collection and storage, one on presentation and analysis. Each finding
+was reproduced as a failing test first, then fixed. Full tables, including what was already safe and the remaining
+risks, are in `docs/security/scraper.md` and `docs/security/dashboard.md`.
+
+Things that matter most:
+
+- Reviewer names and avatars are never stored. E-mail addresses and phone numbers that guests type into review text
+  are masked in the dashboard and in CSV exports (best effort).
+- A review whose ID already belongs to another hotel is refused instead of overwriting it (found in review, critical).
+- Malformed or hostile responses (wrong types, huge text, absurd dates, endless pages) end in a recorded, explained
+  failure and never crash the run or fill the database.
+- The browser may only open `https://www.booking.com/hotel/<country>/<name>.html`, uses a throw-away profile
+  (no cookies or tokens on disk) and refuses downloads and permissions.
+- The dashboard opens the database read-only, escapes all review text, guards CSV exports against spreadsheet
+  formula injection and bounds search and classifier input.
+- No secrets are required to run the project. `.env` and live databases are git-ignored, and a regression test scans
+  tracked files for secret-looking strings. Dependencies are pinned and were audited with `pip-audit` (no known issues
+  at the time of writing).
+
+Remaining risks to know about: Streamlit has no login, so run it on localhost or behind a proxy or VPN, and start it
+from the project root so `.streamlit/config.toml` applies. A lying but well-formed server cannot be detected locally.
+
 ## Assumptions
 
 - Reviewer names are personal data and are not needed, so they are never stored.

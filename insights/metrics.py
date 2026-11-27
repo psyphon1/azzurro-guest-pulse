@@ -459,10 +459,19 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
                             "WHERE id IN (SELECT MAX(id) FROM scrape_runs GROUP BY property)",
                    ["property", "latest_status", "latest_error"])
     # Did the last successful run stop at the page cap? (Missing columns on old databases read as "no".)
-    cover = _read(db_path, "SELECT property, truncated, reported_total FROM scrape_runs WHERE id IN "
-                           "(SELECT MAX(id) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
-                  ["property", "truncated", "reported_total"])
-    cover_by = {r.property: (_flag(r.truncated), _count_or_none(r.reported_total)) for r in cover.itertuples()}
+    # Older databases lack the newer ledger columns (added together). Two literal queries, never built from text.
+    have_cols = set(_read(db_path, "SELECT * FROM scrape_runs LIMIT 0", []).columns)
+    if {"stop_reason", "since_days"} <= have_cols:
+        cover = _read(db_path, "SELECT property, truncated, reported_total, stop_reason, since_days FROM scrape_runs "
+                               "WHERE id IN (SELECT MAX(id) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
+                      ["property", "truncated", "reported_total", "stop_reason", "since_days"])
+    else:
+        cover = _read(db_path, "SELECT property, truncated, reported_total FROM scrape_runs "
+                               "WHERE id IN (SELECT MAX(id) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
+                      ["property", "truncated", "reported_total"])
+    cover_by = {r.property: (_flag(r.truncated), _count_or_none(r.reported_total),
+                             getattr(r, "stop_reason", None), _count_or_none(getattr(r, "since_days", None)))
+                for r in cover.itertuples()}
     slugs = list(BY_SLUG)
     for frame in (stored, ok, latest):
         slugs += [s for s in frame["property"] if s not in slugs]
@@ -473,10 +482,13 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
     for slug in slugs:
         last_ok = _utc(ok_by[slug]) if ok_by.get(slug) else pd.NaT
         status, error = latest_by.get(slug, (None, None))
-        truncated, reported = cover_by.get(slug, (False, None))
+        truncated, reported, stop_reason, since_days = cover_by.get(slug, (False, None, None, None))
         have = int(stored_by.get(slug, 0))
         note = ""
-        if truncated:
+        if truncated and stop_reason == "date_window" and since_days:
+            note = (f"Showing reviews from the last {since_days} days only. Older reviews are not collected "
+                    f"(date window), so history before that is missing.")
+        elif truncated:
             of = f" of {int(reported):,}" if reported is not None else ""
             note = (f"Showing the newest {have:,}{of} reviews on Booking.com. Older reviews are not collected "
                     f"(page limit), so history before the oldest one shown is missing.")

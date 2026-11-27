@@ -113,3 +113,27 @@ banner: "DEMO DATA: synthetic, not real guest reviews".
 
 `python scripts/make_demo_db.py` writes `data/demo.db` (synthetic, deterministic, ~300 reviews over 12 weeks,
 4 properties). Use it for development and tests. Never present it as real.
+
+## Changes since the first version of this contract
+
+Interfaces changed during the page-cap work and the two security reviews (`docs/security/`). Where this list
+and the sections above disagree, this list is current.
+
+- `scrape_runs` gained `truncated`, `reported_total`, `max_pages`, `stop_reason` (`last_page`, `no_new_reviews`,
+  `page_cap`, `date_window`) and `since_days`. Existing databases are upgraded in place when the store opens.
+- `insights.metrics.data_health` returns three more columns: `truncated`, `reported_total`, `coverage_note`
+  (plain-English explanation of a page-limit or date-window run; empty when complete).
+- `topic_shares` returns `n_band_total` as well; `n_reviews` is the number of reviews in the band that have written
+  text for that polarity (rating-only reviews cannot mention a topic). `comment_counts` was added.
+- `insights.metrics._read` raises for unreadable or corrupt databases and only treats "no such table/column" as empty.
+  The connection is read-only and an authorizer denies everything except reading (no PRAGMA, no ATTACH).
+- `weekly_trend` returns at most 520 weeks. Unknown property slugs are shown as sanitised names.
+- `review_topics_state.taxonomy_version` holds `"<TAXONOMY_VERSION>+<CLASSIFIER_REVISION>"`; the first pipeline run after
+  an upgrade re-tags every review once. `review_topics.taxonomy_version` is still the plain taxonomy version.
+  Tag evidence is the normalised sentence, cut to 300 characters; classifier input is limited to 5,000 characters per text.
+- `scraper.store.UpsertResult` gained `conflicts`: a review whose key already belongs to another property is refused and
+  quarantined, never moved. Store methods raise `StoreError` instead of raw sqlite errors.
+- Parsed values are validated and cleaned (control characters, bidi and zero-width characters removed; text bounded;
+  dates, ratings and counts range-checked). `host_reply` is NULL when blank after cleaning.
+- The dashboard masks e-mail addresses and phone numbers in review text, hover text, error text and the CSV, and caps
+  CSV export at 50,000 rows (`feed_to_csv_limited`).
