@@ -9,8 +9,9 @@ def pairs(tags):
 
 # --- taxonomy ----------------------------------------------------------
 def test_taxonomy_has_exactly_the_contract_topics():
-    assert TAXONOMY_VERSION == "1"
+    assert TAXONOMY_VERSION == "2"
     assert {k: t.label for k, t in TOPICS.items()} == {
+        "safety": "Safety & pests",
         "cleanliness": "Cleanliness",
         "check_in": "Check-in experience",
         "staff": "Staff behaviour",

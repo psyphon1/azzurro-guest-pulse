@@ -1,7 +1,7 @@
 """Fixed topic taxonomy for review classification. Bump TAXONOMY_VERSION whenever keywords change."""
 from dataclasses import dataclass
 
-TAXONOMY_VERSION = "1"
+TAXONOMY_VERSION = "2"   # 2: added "safety" (safety and pests)
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,10 @@ class Topic:
 # tolerated). Bare 'walk' and 'door' are deliberately absent: 'walked past your room' and 'going out
 # the door' are not location / check-in mentions.
 _TOPIC_LIST = [
+    Topic("safety", "Safety & pests", (
+        "cockroach", "cockroaches", "roach", "roaches", "bed bug", "bed bugs", "bedbug", "bedbugs", "mould", "mold",
+        "mouldy", "moldy", "rat", "rats", "fire", "electrical", "theft", "stolen", "unsafe",
+    )),
     Topic("cleanliness", "Cleanliness", (
         "clean", "unclean", "dirty", "dirt", "filthy", "grubby", "grime", "grimy", "stain", "stained",
         "smell", "smelly", "smelt", "stink", "stinks", "stinky", "odour", "odor", "sewerage", "sewage",

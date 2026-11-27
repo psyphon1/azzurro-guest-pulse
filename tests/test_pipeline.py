@@ -3,6 +3,8 @@ from datetime import date
 
 import pytest
 
+from insights.topics import TAXONOMY_VERSION
+
 from insights import pipeline
 from insights.pipeline import ClassifyResult, classify_all, main
 from scraper.models import Review
@@ -40,8 +42,8 @@ def test_classify_all_writes_tags_with_contract_columns(db_path, store):
 
     assert result == ClassifyResult(reviews_seen=1, reviews_classified=1, reviews_skipped=0, tags_written=2)
     assert tags(db_path) == [
-        ("r1", "cleanliness", "negative", "The room was dirty.", "keywords", "1"),
-        ("r1", "location", "positive", "Great location.", "keywords", "1"),
+        ("r1", "cleanliness", "negative", "The room was dirty.", "keywords", TAXONOMY_VERSION),
+        ("r1", "location", "positive", "Great location.", "keywords", TAXONOMY_VERSION),
     ]
 
 
@@ -100,11 +102,11 @@ def test_taxonomy_version_bump_reclassifies_everything(db_path, store, monkeypat
     store.upsert_reviews([make_review("r1"), make_review("r2", liked=None, disliked=None)])
     classify_all(db_path)
 
-    monkeypatch.setattr(pipeline, "TAXONOMY_VERSION", "2")
+    monkeypatch.setattr(pipeline, "TAXONOMY_VERSION", "99")
     result = classify_all(db_path)
 
     assert (result.reviews_classified, result.reviews_skipped) == (2, 0)
-    assert {t[5] for t in tags(db_path)} == {"2"}
+    assert {t[5] for t in tags(db_path)} == {"99"}
     assert len(tags(db_path)) == 2  # replaced, not duplicated
     assert classify_all(db_path).reviews_skipped == 2
 

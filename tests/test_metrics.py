@@ -2,6 +2,7 @@
 from datetime import date, datetime, timezone
 
 import pandas as pd
+from insights.topics import TOPICS
 import pytest
 
 from insights import metrics
@@ -375,7 +376,7 @@ def test_topic_by_property_is_full_grid(topic_world):
     df, t = topic_world
     g = metrics.topic_by_property(df, t, W, date(2026, 3, 8))
     assert {"property_name", "topic", "label", "count"} <= set(g.columns)
-    assert len(g) == 2 * 8                                         # 2 properties x 8 topics, zero-filled
+    assert len(g) == 2 * len(TOPICS)                               # 2 properties x every topic, zero-filled
     cell = g[(g["property"] == P1) & (g["topic"] == "cleanliness")]["count"].iloc[0]
     assert cell == 2
     assert g[(g["property"] == P2) & (g["topic"] == "location")]["count"].iloc[0] == 0
