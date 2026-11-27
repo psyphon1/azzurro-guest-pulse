@@ -1,0 +1,8 @@
+# Runtime packages for the review dashboard ONLY (what a hosted demo needs).
+# The scraper (playwright) and the test tools (pytest) are deliberately not here: they are not imported by
+# dashboard/app.py, and Playwright cannot run on a typical free host. The ranges start at the versions this project
+# was tested with (see ../requirements.txt) and stop before the next major release.
+streamlit>=1.67,<2
+pandas>=3.1,<4
+plotly>=7.2,<8
+pydantic>=2.14,<3

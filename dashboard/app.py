@@ -1,6 +1,7 @@
 """Azzurro Hotels guest-review dashboard. Run with:  streamlit run dashboard/app.py
 
-Database: env REVIEWS_DB (default data/reviews.db). A file name containing "demo" triggers the demo banner.
+Database: env REVIEWS_DB, else data/reviews.db, else data/sample/reviews_sample.db (the public snapshot), all
+relative to the project root. A file name containing "demo" triggers the demo banner, "sample" the snapshot banner.
 """
 import logging
 import sys
@@ -62,6 +63,8 @@ except Exception:  # unreadable, corrupt or half-built file: say so politely; th
 def render_dashboard(db_path, bundle) -> None:
     df_all, skipped = D.clean_reviews(bundle.reviews)
     topics_all, health = D.clean_topics(bundle.topics, df_all), bundle.health
+    if D.is_sample(db_path):     # a snapshot must never be mistaken for live data: say so above everything else
+        S.html(f'<div class="az-banner-demo">{esc(D.sample_banner_text(health))}</div>')
     S.render_banner(db_path, health)
     S.render_skipped(skipped)
 

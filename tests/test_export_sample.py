@@ -164,3 +164,23 @@ def test_committed_real_review_fixtures_contain_no_email_or_phone_numbers():
             for field in ("liked", "disliked", "title", "host_reply"):
                 assert not looks_like_pii(case.get(field) or ""), f"{path.name}: {case.get('id')} has contact details"
     assert checked >= 2                                # both gold files were really inspected
+
+
+def test_the_sample_database_can_be_tagged_again_by_the_pipeline(src, tmp_path):
+    # Bug found by the deployment review: the copied tag tables had no primary keys, so the pipeline's
+    # INSERT OR REPLACE / ON CONFLICT logic failed on the sample database.
+    out = export_sample(src, str(tmp_path / "s.csv"), per_property=5, sample_db_path=str(tmp_path / "sample.db"))
+    before = sqlite3.connect(out.sample_db_path).execute("select count(*) from review_topics").fetchone()[0]
+
+    result = classify_all(out.sample_db_path)                      # must not raise
+
+    after = sqlite3.connect(out.sample_db_path).execute("select count(*) from review_topics").fetchone()[0]
+    assert after == before and result.reviews_seen == 20
+
+
+def test_tag_tables_in_the_sample_keep_their_primary_keys(src, tmp_path):
+    out = export_sample(src, str(tmp_path / "s.csv"), per_property=5, sample_db_path=str(tmp_path / "sample.db"))
+    con = sqlite3.connect(out.sample_db_path)
+    pk_topics = [r[1] for r in con.execute("PRAGMA table_info(review_topics)") if r[5]]
+    pk_state = [r[1] for r in con.execute("PRAGMA table_info(review_topics_state)") if r[5]]
+    assert set(pk_topics) == {"review_key", "topic", "polarity"} and pk_state == ["review_key"]

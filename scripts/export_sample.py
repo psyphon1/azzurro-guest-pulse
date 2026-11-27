@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dashboard.ui import data as D  # noqa: E402
 from insights import metrics  # noqa: E402
+from insights.pipeline import SCHEMA as TAG_SCHEMA  # noqa: E402
 from scraper.config import PROPERTIES  # noqa: E402
 from scraper.store import ReviewStore  # noqa: E402
 
@@ -115,10 +116,10 @@ def _write_sample_db(src_path: str, dest_path: str, keys: list[str]) -> None:
         shared = ", ".join(c for c in run_cols if c in have)   # column names come from our own schema
         con.execute(f"INSERT INTO main.scrape_runs ({shared}) SELECT {shared} FROM src.scrape_runs WHERE id IN "
                     "(SELECT MAX(id) FROM src.scrape_runs WHERE status = 'ok' GROUP BY property)")
-        for table in ("review_topics", "review_topics_state"):
+        con.executescript(TAG_SCHEMA)                         # the real tables, with their primary keys, not CREATE ... AS
+        for table in ("review_topics", "review_topics_state"):   # fixed names
             exists = con.execute("SELECT 1 FROM src.sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
             if exists:
-                con.execute(f"CREATE TABLE IF NOT EXISTS main.{table} AS SELECT * FROM src.{table} WHERE 0")
                 con.execute(f"INSERT INTO main.{table} SELECT * FROM src.{table} WHERE review_key IN (SELECT review_key FROM keep)")
         con.commit()
     finally:

@@ -15,5 +15,8 @@ data/*.db-journal
 # live scraped databases are never committed by accident; a deliberate sample lives in data/sample/
 data/*.db
 !data/sample/
+# The sample snapshot holds real public review text (it may include first names typed by reviewers), so it is
+# NOT committed by accident. Publishing it is a deliberate step: git add -f data/sample/reviews_sample.db (docs/deploy.md).
+data/sample/*.db
 .DS_Store
 data/demo.db

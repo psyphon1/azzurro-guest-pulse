@@ -32,12 +32,55 @@ def topic_labels() -> dict[str, str]:
         return dict(_FALLBACK_TOPIC_LABELS)
 
 
+LIVE_DB = Path("data") / "reviews.db"
+SAMPLE_DB = Path("data") / "sample" / "reviews_sample.db"
+
+
 def resolve_db_path() -> Path:
-    raw = os.environ.get("REVIEWS_DB", "data/reviews.db")
-    p = Path(raw)
-    if p.is_absolute() or p.exists():
-        return p
-    return ROOT / p if (ROOT / p).exists() else p
+    """Which database file the dashboard reads.
+
+    1. env REVIEWS_DB (blank counts as not set): used as given, even if it does not exist, so a typo is reported
+       instead of being quietly replaced by other data (relative paths: working directory first, then project root).
+    2. otherwise <project root>/data/reviews.db if it is a file (the live scrape),
+    3. otherwise <project root>/data/sample/reviews_sample.db if it is a file (the committed public snapshot),
+    4. otherwise the live default, which does not exist: the page then shows its friendly "no data" message.
+
+    The defaults hang off the project root, never the working directory, so a server started from another folder
+    cannot pick up somebody else's data/ folder.
+    """
+    raw = (os.environ.get("REVIEWS_DB") or "").strip()
+    if raw:
+        p = Path(raw)
+        if p.is_absolute() or p.exists():
+            return p
+        return ROOT / p if (ROOT / p).exists() else p
+    for candidate in (ROOT / LIVE_DB, ROOT / SAMPLE_DB):
+        if candidate.is_file():
+            return candidate
+    return ROOT / LIVE_DB
+
+
+def is_sample(path: Path) -> bool:
+    """True for the public snapshot: "sample" in the file name, or in the name of the file a link points to."""
+    names = [Path(path).name]
+    try:
+        names.append(Path(path).resolve().name)
+    except (OSError, RuntimeError, ValueError):
+        pass
+    return any("sample" in n.lower() for n in names)
+
+
+def sample_banner_text(health: pd.DataFrame | None) -> str:
+    """The warning shown on a snapshot. The date is the last successful scrape recorded in the file, or 'unknown'."""
+    when = "unknown"
+    try:
+        if health is not None and "last_ok_at" in health.columns and not health.empty:
+            latest = pd.to_datetime(health["last_ok_at"], utc=True, errors="coerce").max()
+            if pd.notna(latest):
+                when = latest.tz_convert(SYDNEY).strftime("%d %b %Y")
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return f"SAMPLE DATA: a snapshot of real public Booking.com reviews, not live. Collected on {when}."
 
 
 def sydney_today() -> date:
