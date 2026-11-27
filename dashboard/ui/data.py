@@ -335,3 +335,50 @@ def to_sydney(ts) -> str:
     if pd.isna(t):
         return "unknown"
     return t.tz_convert(SYDNEY).strftime("%a %d %b %Y, %I:%M %p")
+
+
+# --- hotels with no reviews ------------------------------------------------------------------------
+@dataclass(frozen=True)
+class NoData:
+    """A hotel the dashboard has no usable reviews for, and the plain-English reason why."""
+    slug: str
+    name: str
+    reason: str          # one plain sentence for staff
+    detail: str = ""     # the ledger's own words (already free of angle brackets), may be empty
+
+
+def no_data_reason(status, error, stored: int) -> tuple[str, str]:
+    """(plain-English reason, ledger detail) for a hotel that has no usable reviews. Never raises."""
+    detail = ""
+    if isinstance(error, str) and error.strip():
+        from dashboard.ui.style import plain_text
+        detail = plain_text(error)
+    if stored:
+        return ("Some reviews are stored, but none could be used because their dates or scores could not be trusted.", detail)
+    reasons = {
+        "blocked": "Booking.com blocked our automatic check, so no reviews could be collected.",
+        "failed": "The last attempt to collect reviews failed, so none are stored.",
+        "interrupted": "The last attempt to collect reviews was cut short before any were saved.",
+        "running": "Collection is running now. Reviews should appear after it finishes.",
+        "ok": "The last collection finished but found no reviews for this hotel.",
+    }
+    never = "Reviews have never been collected for this hotel."
+    return (reasons.get(status, never) if isinstance(status, str) else never), detail
+
+
+def hotels_without_reviews(health: pd.DataFrame | None, reviews: pd.DataFrame | None = None) -> dict[str, NoData]:
+    """slug -> NoData for every hotel in the health table with no usable review (not in `reviews`, or, without
+    `reviews`, with nothing stored). Built only from the DataFrames insights.metrics returned."""
+    out: dict[str, NoData] = {}
+    if health is None or health.empty:
+        return out
+    have = set(reviews["property"]) if reviews is not None and not reviews.empty else set()
+    for r in health.itertuples(index=False):
+        stored = int(r.stored) if pd.notna(r.stored) else 0
+        usable = r.property in have if reviews is not None else stored > 0
+        if usable:
+            continue
+        status = r.latest_status if isinstance(r.latest_status, str) else None
+        reason, detail = no_data_reason(status, r.latest_error, stored)
+        out[r.property] = NoData(r.property, r.property_name, reason, detail)
+    return out

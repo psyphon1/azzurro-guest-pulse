@@ -893,3 +893,15 @@ def test_data_health_keeps_the_page_cap_note_on_a_database_that_has_no_stop_reas
     h = metrics.data_health(path, now=NOW).set_index("property")
 
     assert "page limit" in h.loc["olympic-paddington", "coverage_note"]
+
+
+def test_data_health_explains_a_list_that_ended_early_in_plain_words(tmp_path):
+    path, store, t = _runs_db(tmp_path)
+    store.upsert_reviews([review(f"k{i}", P1) for i in range(30)])
+    r = store.start_run(P1, "full")
+    store.finish_run(r, "ok", 3, 30, 0, 0, None, truncated=True, reported_total=2386, stop_reason="ended_early")
+
+    note = metrics.data_health(path, now=NOW).set_index("property").loc[P1, "coverage_note"]
+
+    assert "30 of 2,386" in note and "ended early" in note.lower() and "older" in note.lower()
+    assert "page limit" not in note and "date window" not in note

@@ -16,8 +16,9 @@ hosting service from general knowledge and could not be tried here, so check it 
   does not provide. Nothing on the host ever contacts Booking.com. **[verified]** the dashboard does not import the
   collector's browser code (a test checks this).
 * If a hotel had no reviews when the snapshot was taken, it simply does not appear. Right now the snapshot has
-  no reviews for one of the four hotels (the live collection had not reached it yet). Refresh the snapshot
-  (section 3) after a complete collection.
+  no reviews for Central Sydney: it was blocked twice and skipped (`docs/adr/004-central-sydney-not-collected.md`). It
+  holds 733 reviews: Potts Point 300, Darling Harbour 300 (both partial in the full database) and Olympic Hotel
+  Paddington 133. Refresh the snapshot (section 3) after Central Sydney has been collected.
 
 ## 2. Streamlit Community Cloud, step by step
 

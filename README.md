@@ -4,12 +4,23 @@ Collects public Booking.com guest reviews for four Azzurro Hotels properties and
 dashboard that operations staff can read on a Monday morning: how each hotel scored this week, what
 changed since last week, what guests keep complaining about, and which bad reviews still have no reply.
 
-| Property | Booking.com page (also the `--property` value) |
-|---|---|
-| Olympic Hotel Paddington | olympic-paddington |
-| Potts Point | venus-potts-point-sydney |
-| Central Sydney | venus-surry-hills |
-| Darling Harbour | chateau-de-venus |
+| Property | Booking.com page (also the `--property` value) | Collected in this submission |
+|---|---|---|
+| Olympic Hotel Paddington | olympic-paddington | Yes, complete (133 reviews) |
+| Potts Point | venus-potts-point-sydney | Partly: 1,440 stored of 2,386 reported |
+| Central Sydney | venus-surry-hills | **No.** Blocked twice, skipped (see below) |
+| Darling Harbour | chateau-de-venus | Partly: 2,010 stored of 4,305 reported |
+
+**Read this first: this submission has data for 3 of the 4 hotels, and two of those three are partial.**
+
+- **Central Sydney has no reviews.** Both collection attempts were blocked by Booking.com's bot check, and it was
+  decided not to keep retrying in the time available. The dashboard lists it as blocked and shows no numbers for it. Why,
+  and how to collect it later: [docs/adr/004-central-sydney-not-collected.md](docs/adr/004-central-sydney-not-collected.md).
+- **Potts Point** is partial: the review list ended early (the "Next page" button disappeared), so the oldest reviews
+  (before 2023-11-28) are missing.
+- **Darling Harbour** is partial: the first run stopped at an old 200-page limit, so reviews before 2025-01-31 are missing.
+- Counts were read from `data/reviews.db` on 2026-11-27 (see [What was collected](#what-was-collected)). Recent weeks, which
+  are what the dashboard is for, are covered for the three collected hotels.
 
 Booking.com offers no API access, so reviews are collected through a real browser (see
 [Review collection](#review-collection)). Everything else (storage, topic analysis, metrics, dashboard)
@@ -54,7 +65,7 @@ REVIEWS_DB=data/demo.db streamlit run dashboard/app.py     # shows a "DEMO DATA"
 Streamlit prints a local address (normally http://localhost:8501); open it in a browser. If the database file does not
 exist yet, the dashboard says so and shows these same commands instead of failing.
 
-Run the tests: `python -m pytest -q` (no network needed; about 885 tests, around 35 seconds).
+Run the tests: `python -m pytest -q` (no network needed; about 940 tests, around 35 seconds).
 
 ### Keeping it up to date
 
@@ -93,8 +104,8 @@ Environment variable `REVIEWS_DB` points the dashboard at a different database (
 | `insights/` | `topics.py` (taxonomy), `classify.py` (keyword classifier), `pipeline.py` (writes `review_topics`), `metrics.py` (all numbers the dashboard shows) |
 | `dashboard/` | Streamlit UI only. It calls `insights.metrics` and never recomputes a metric itself. |
 | `tests/` | Offline tests on saved, anonymised fixtures. |
-| `docs/` | `assumptions.md` (definitions), `contracts.md` (module interfaces), `evaluation.md` (classifier accuracy), `adr/` (decisions), `security/` (red-team findings), `requirements-traceability.md` (requirement-by-requirement status and open gaps) |
-| `scripts/` | `make_demo_db.py` (synthetic demo data), `evaluate_classifier.py` (score the classifier), `make_gold_sample.py` and `export_sample.py` (see Sample data), and `spike_*.py` (throwaway investigation scripts, kept as a record, not product code) |
+| `docs/` | `assumptions.md` (definitions), `contracts.md` (module interfaces), `evaluation.md` (classifier accuracy), `spot-check.md` (a 15-minute sheet for a human to check the accuracy labels), `deploy.md` (putting a sample-data demo online), `adr/` (decisions, including why Central Sydney is not collected), `security/` (red-team findings), `requirements-traceability.md` (requirement-by-requirement status and open gaps) |
+| `scripts/` | `make_demo_db.py` (synthetic demo data), `evaluate_classifier.py` (score the classifier), `make_gold_sample.py` and `export_sample.py` (see Sample data), `backfill_coverage.py` (see Coverage backfill), and `spike_*.py` (throwaway investigation scripts, kept as a record, not product code) |
 
 Design choices worth knowing:
 
@@ -139,6 +150,31 @@ on the live page. Details and the reasoning are in `docs/adr/001-collection-meth
 | Reviews removed from Booking | Flagged with `missing_since` after a full run that reached the end of the list, never deleted. Not done for runs ended by the date window or the page cap. |
 | Stale data shown as fresh | The dashboard shows last successful update per hotel and warns after 48 hours or on a failed/blocked run. |
 
+### What was collected
+
+One run per hotel on 2026-11-27, from the run ledger and the `reviews` table of `data/reviews.db`:
+
+| Hotel | Stored | Booking.com reports | Oldest to newest review | Why it is not complete |
+|---|---|---|---|---|
+| Olympic Hotel Paddington | 133 | 133 | 2026-07-06 to 2026-11-27 | Complete. |
+| Potts Point | 1,440 | 2,386 | 2023-11-28 to 2026-11-27 | The list ended early after 144 full pages; the missing 946 are the oldest reviews. The drift check caught it (`DRIFT`). |
+| Central Sydney | 0 | 2,445 (seen when the page was opened alone) | none | Blocked, not collected. [ADR 004](docs/adr/004-central-sydney-not-collected.md). |
+| Darling Harbour | 2,010 | 4,305 | 2025-01-31 to 2026-11-27 | An old internal 200-page stop; reviews before 2025-01-31 are missing. |
+
+3,583 reviews are stored in total. The two partial hotels were collected before the date window, the page-cap record
+and the ledger coverage fields existed, so their coverage was written into the ledger afterwards (next section). In all
+three cases the newest reviews, the ones weekly operations looks at, are present.
+
+### Coverage backfill (`scripts/backfill_coverage.py`)
+
+Runs collected before coverage tracking existed have no record of being partial, so the dashboard would show them as
+complete. `scripts/backfill_coverage.py` fixes that after the fact: you give it the hotel, Booking.com's reported total,
+why the run stopped (`page_cap` or `ended_early`) and where those numbers came from, and it marks that hotel's latest
+successful run as partial. The evidence text is stored in the ledger, so the record says it was added later and from what.
+It refuses to overwrite coverage the scraper recorded itself. It never touches the reviews table. It was used for Potts Point and Darling Harbour, with
+the numbers printed in the console output of the first runs. Example:
+`python scripts/backfill_coverage.py --db data/reviews.db --property venus-potts-point-sydney --reported-total 2386 --stop-reason ended_early --evidence "console output of the 27 Nov run"`.
+
 ### Date window and page limit
 
 Reviews are read newest first. A run stops at the first page that is entirely older than **365 days**
@@ -160,6 +196,9 @@ trade-offs: `docs/adr/002-page-cap.md`.
 
 ### Known limitations of collection
 
+- **Central Sydney was not collected** (blocked twice, then skipped on purpose). Booking.com throttling is the likely cause
+  but is unproven: the page loaded normally when opened alone later. Potts Point and Darling Harbour are partial, as above.
+  A claim like "the average for Darling Harbour" therefore covers its newest 2,010 reviews only.
 - **A visible browser window is required.** Headless Chromium receives HTTP 400 "Request not supported"
   from the review endpoint (observed during development). We did not try to disguise headless mode.
   Running on a server therefore needs a virtual display, or a different source such as an Extranet export.
@@ -182,12 +221,21 @@ change storage, insights or the dashboard.
 
 ### Sample data
 
-After a real collection and the pipeline step, `python scripts/export_sample.py --per-property 300` writes
-`data/sample_reviews.csv` (newest 300 reviews per hotel, readable in Excel, no reviewer identity, e-mail addresses and
-phone numbers masked) and `data/sample/reviews_sample.db` (the same reviews with topic tags, so the dashboard can be
-shown without scraping: `REVIEWS_DB=data/sample/reviews_sample.db streamlit run dashboard/app.py`). It opens the live
-database read-only and refuses to overwrite it. These two files are the only data files meant to be committed; the live
-database is git-ignored. Needs Python 3.13 or newer (see Quick start).
+Two files hold a snapshot so the dashboard can be shown without scraping:
+
+- `data/sample_reviews.csv`: 733 rows, readable in Excel. The newest 300 reviews of Potts Point and of Darling Harbour, and
+  all 133 of Olympic Hotel Paddington. It has date, hotel, score, room, traveller type, country, title, liked and disliked
+  text, the hotel reply and the topic tags. No reviewer identity; e-mail addresses and phone numbers are masked.
+- `data/sample/reviews_sample.db`: the same 733 reviews with their topic tags, so the dashboard runs on it:
+  `REVIEWS_DB=data/sample/reviews_sample.db streamlit run dashboard/app.py`. It carries a "SAMPLE DATA" banner.
+
+Central Sydney is not in either file. Because only the newest 300 per hotel are exported, the sample covers a shorter
+period than the full database (Potts Point from 2025-06-04, Darling Harbour from 2026-03-12, both to 2026-11-27).
+
+To regenerate after a new collection and pipeline run: `python scripts/export_sample.py --per-property 300`. It opens the
+live database read-only and refuses to overwrite it. The CSV can be committed as is. The git-ignore rules keep
+`data/sample/reviews_sample.db` out of the repository until you add it on purpose (`git add -f`, see `docs/deploy.md`),
+because it holds real public review text. The live database is git-ignored. Needs Python 3.13 or newer (see Quick start).
 
 ## Insights
 
@@ -210,8 +258,9 @@ without changing anything downstream.
 
 Scored against 100 real reviews labelled independently (a separate annotator that never saw the classifier), on a
 held-out half that was not used for tuning: **precision 0.84, recall 0.76, F1 0.80**. Weakest topic: room condition
-(F1 0.65). Details, the tuning that was done and the caveats (100 reviews, English only, one AI annotator, so a human
-spot-check is still advisable) are in `docs/evaluation.md`. An earlier self-labelled set scored higher (F1 0.95) and
+(F1 0.65). Details, the tuning that was done and the caveats (100 reviews, English only, one AI annotator, no Central
+Sydney reviews) are in `docs/evaluation.md`. The labels have not been checked by a person yet: `docs/spot-check.md` is a
+sheet of 20 cases that takes about 15 minutes. An earlier self-labelled set scored higher (F1 0.95) and
 should be ignored as evidence of real accuracy.
 
 Known weaknesses:

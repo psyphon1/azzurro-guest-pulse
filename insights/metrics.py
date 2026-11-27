@@ -488,6 +488,10 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
         if truncated and stop_reason == "date_window" and since_days:
             note = (f"Showing reviews from the last {since_days} days only. Older reviews are not collected "
                     f"(date window), so history before that is missing.")
+        elif truncated and stop_reason == "ended_early":
+            of = f" of {int(reported):,}" if reported is not None else ""
+            note = (f"Showing {have:,}{of} reviews. Booking.com's list ended early, so older reviews "
+                    f"were not collected and history before the oldest one shown is missing.")
         elif truncated:
             of = f" of {int(reported):,}" if reported is not None else ""
             note = (f"Showing the newest {have:,}{of} reviews on Booking.com. Older reviews are not collected "

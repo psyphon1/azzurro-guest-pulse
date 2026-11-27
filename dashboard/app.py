@@ -65,7 +65,8 @@ def render_dashboard(db_path, bundle) -> None:
     topics_all, health = D.clean_topics(bundle.topics, df_all), bundle.health
     if D.is_sample(db_path):     # a snapshot must never be mistaken for live data: say so above everything else
         S.html(f'<div class="az-banner-demo">{esc(D.sample_banner_text(health))}</div>')
-    S.render_banner(db_path, health)
+    no_data = D.hotels_without_reviews(health, df_all)     # hotels with no usable review at all (e.g. blocked)
+    S.render_banner(db_path, health, no_data)
     S.render_skipped(skipped)
 
     if df_all.empty:
@@ -78,7 +79,8 @@ def render_dashboard(db_path, bundle) -> None:
     # --- sidebar filters ----------------------------------------------------------------------------
     slug_by_name = {**dict(zip(df_all["property_name"], df_all["property"])), **{p.name: p.slug for p in PROPERTIES}}
     present = set(df_all["property_name"])
-    all_names = [p.name for p in PROPERTIES if p.name in present] + sorted(present - set(slug_by_name))
+    # Every configured hotel is listed, even one with no reviews: it must never silently disappear.
+    all_names = [p.name for p in PROPERTIES] + sorted(present - {p.name for p in PROPERTIES})
     with st.sidebar:
         st.header("Filters")
         sel_names = st.multiselect("Hotels", all_names, default=all_names, key="props",
@@ -112,9 +114,20 @@ def render_dashboard(db_path, bundle) -> None:
         st.stop()
 
     sel_slugs = [slug_by_name.get(n, n) for n in sel_names]
+    sel_nodata = {slug: nd for slug, nd in no_data.items() if slug in sel_slugs}
+    nodata_names = [nd.name for nd in sel_nodata.values()]
     df = df_all[df_all["property_name"].isin(sel_names)]
     topics = topics_all[topics_all["review_key"].isin(df["review_key"])] if not topics_all.empty else topics_all
     topics_ready = not topics_all.empty
+
+    if df.empty:     # only hotels without any reviews are selected
+        many = len(sel_nodata) != 1
+        st.info(f"No reviews have been collected for the selected hotel{'s' if many else ''} yet, so there are no "
+                "scores, trends or topics to show. The card below says why. Select another hotel in the sidebar to see its reviews.")
+        S.render_properties(None, {}, topics_ready, sel_nodata, sel_slugs)
+        S.render_health(health, None, {}, {})
+        S.render_howto()
+        st.stop()
     labels = D.topic_labels()
     df_range = df[(df["review_date"] >= pd.Timestamp(start)) & (df["review_date"] <= pd.Timestamp(end))]
 
@@ -130,16 +143,18 @@ def render_dashboard(db_path, bundle) -> None:
         week_label += " (week not finished)"
 
     # --- 2-4: the focus week ------------------------------------------------------------------------
-    S.render_insights(m.generate_insights(df, topics, focus), week_label)
+    breakdown = m.property_breakdown(df, focus)
+    if breakdown is not None and not breakdown.empty:
+        breakdown = breakdown[breakdown["property"].isin(sel_slugs)]
+    coverage = S.coverage_text(list(zip(sel_slugs, sel_names)), breakdown, no_data)
+    S.render_insights(m.generate_insights(df, topics, focus), week_label, coverage)
 
     st.header("Guest score")
     if start < focus or end > focus + timedelta(days=6):
         st.caption(f"The score cards and hotel cards describe the week of {week_label}. Trends, topics and the review feed cover {D.nice_range(start, end)}.")
+    st.caption(coverage)
     S.render_kpis(m.compare_weeks(df, focus))
 
-    breakdown = m.property_breakdown(df, focus)
-    if breakdown is not None and not breakdown.empty:
-        breakdown = breakdown[breakdown["property"].isin(sel_slugs)]
     top_complaint: dict = {}
     if topics_ready and breakdown is not None:
         for r in breakdown.itertuples(index=False):
@@ -152,16 +167,16 @@ def render_dashboard(db_path, bundle) -> None:
                 top = ts.sort_values("count", ascending=False).iloc[0]
                 top_complaint[r.property] = (f"{top['label']} ({int(top['count'])} of {int(top['n_reviews'])} "
                                              f"negative reviews with a comment)", extra)
-    S.render_properties(breakdown, top_complaint, topics_ready)
+    S.render_properties(breakdown, top_complaint, topics_ready, sel_nodata, sel_slugs)
 
     # --- 5-6: range-wide views ----------------------------------------------------------------------
     trend_start = min(start, D.monday_of(end) - timedelta(weeks=7))
-    S.render_trends(m.weekly_trend(df, trend_start, end), trend_start, end)
-    S.render_topics(df, topics, start, end, sel_names, sel_slugs, topics_ready, db_path)
+    S.render_trends(m.weekly_trend(df, trend_start, end), trend_start, end, nodata_names)
+    S.render_topics(df, topics, start, end, sel_names, sel_slugs, topics_ready, db_path, nodata_names)
 
     # --- 7-9: feed, health, help --------------------------------------------------------------------
     chips = D.topic_chips(topics)
-    feed_df = S.render_feed(df_range, chips, labels, topics_ready)
+    feed_df = S.render_feed(df_range, chips, labels, topics_ready, nodata_names)
     S.render_health(health, feed_df, chips, labels)
     S.render_howto()
 

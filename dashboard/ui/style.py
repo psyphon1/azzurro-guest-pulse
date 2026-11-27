@@ -47,6 +47,8 @@ h2 {{ border-bottom: 2px solid {LINE}; padding-bottom: .3rem; margin-top: 1.6rem
 [data-testid="stColumn"] [data-testid="stElementContainer"], [data-testid="stColumn"] [data-testid="stMarkdown"],
 [data-testid="stColumn"] [data-testid="stMarkdown"] > div,
 [data-testid="stColumn"] [data-testid="stMarkdownContainer"] {{ height: 100%; }}
+.az-card.empty {{ background: #FBF7EC; border: 2px dashed #E6C26B; }}
+.az-nodata-title {{ font-family: Georgia, serif; font-size: 1.15rem; line-height: 1.25; color: {INK}; font-weight: 700; }}
 .az-label {{ font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: {MUTED} !important; font-weight: 600; }}
 .az-value {{ font-family: Georgia, serif; font-size: 2.2rem; line-height: 1.15; color: {INK}; margin: .15rem 0; }}
 .az-value small {{ font-size: .9rem; color: {MUTED}; font-family: system-ui, sans-serif; }}

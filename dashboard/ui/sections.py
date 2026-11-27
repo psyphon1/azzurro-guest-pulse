@@ -70,17 +70,24 @@ def empty_note(text: str) -> None:
 
 
 # 1. Banner ----------------------------------------------------------------------------------
-def render_banner(db_path: Path, health: pd.DataFrame) -> None:
+def render_banner(db_path: Path, health: pd.DataFrame, no_data: dict | None = None) -> None:
+    """Top of the page: freshness, then (in plain sentences) which hotels have no reviews or only part of the history.
+    `no_data` is slug -> D.NoData; when omitted it is worked out from the health table (nothing stored)."""
     if "demo" in db_path.name.lower():
         html('<div class="az-banner-demo">DEMO DATA: synthetic, not real guest reviews</div>')
     if health is None or health.empty:
         html('<div class="az-fresh warn"><b>Data freshness:</b> no update history found yet.</div>')
         return
+    if no_data is None:
+        no_data = D.hotels_without_reviews(health)
     ok = pd.to_datetime(health["last_ok_at"], utc=True, errors="coerce")
     latest = ok.max()
     when = D.to_sydney(latest) if pd.notna(latest) else "never"
-    problems = []
+    problems = [f"{nd.name}: no reviews collected yet. {nd.reason} It is not included in any number on this page."
+                for nd in no_data.values()]
     for r in health.itertuples(index=False):
+        if r.property in no_data:      # said above, once, in plain words
+            continue
         name = r.property_name
         if r.latest_status == "blocked":
             problems.append(f"{name}: Booking.com blocked our last check, so recent reviews may be missing.")
@@ -88,20 +95,51 @@ def render_banner(db_path: Path, health: pd.DataFrame) -> None:
             problems.append(f"{name}: the last update failed, so recent reviews may be missing.")
         if bool(r.stale):
             problems.append(f"{name}: no successful update for more than 48 hours.")
+    last_ok = f"Last successful update: {esc(when)} (Sydney time)." if pd.notna(latest) else "No successful update yet."
     if problems:
         items = "".join(f"<li>{esc(p)}</li>" for p in dict.fromkeys(problems))
         html(f'<div class="az-fresh warn"><b>&#9888; Check the data before you rely on it.</b> '
-             f'Last successful update: {esc(when)} (Sydney time).<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
+             f'{last_ok}<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
     else:
-        html(f'<div class="az-fresh"><b>&#10003; Data is up to date.</b> Last successful update: {esc(when)} (Sydney time).</div>')
-    # Hotels with more reviews than the collection page limit: say so plainly, never silently show partial history.
-    notes = [f"{r.property_name}: {r.coverage_note}" for r in health.itertuples(index=False)
-             if isinstance(r.coverage_note, str) and r.coverage_note]
+        html(f'<div class="az-fresh"><b>&#10003; Data is up to date.</b> {last_ok}</div>')
+    # Hotels whose older reviews were not collected: say so plainly, never silently show partial history.
+    notes = [f"{r.property_name}: only part of the history is collected. {r.coverage_note}"
+             for r in health.itertuples(index=False)
+             if r.property not in no_data and isinstance(r.coverage_note, str) and r.coverage_note]
     if notes:
         items = "".join(f"<li>{esc(n)}</li>" for n in notes)
-        html(f'<div class="az-fresh"><b>&#8505; Not every review is included.</b> To keep collection fast and polite we only '
-             f'read the newest reviews first. Recent weeks are complete; long-term history is not.'
+        html(f'<div class="az-fresh"><b>&#8505; Not every review is included.</b> For these hotels older reviews are '
+             f'missing, so long-term numbers cover only part of the history.'
              f'<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
+
+
+def coverage_text(selected: list[tuple[str, str]], breakdown: pd.DataFrame | None, no_data: dict) -> str:
+    """'Based on 3 of 4 hotels. Not included: Central Sydney (no reviews collected yet).'
+    `selected` is [(slug, name)] for the hotels the staff member chose; a hotel counts when it has reviews in the week shown."""
+    n_by = {} if breakdown is None or breakdown.empty else dict(zip(breakdown["property"], breakdown["n"].astype(int)))
+    total = len(selected)
+    covered = sum(1 for slug, _ in selected if n_by.get(slug, 0) > 0)
+    out = f"Based on {covered} of {total} hotels." if total != 1 else f"Based on {covered} of 1 hotel."
+    left_out = [f"{name} ({'no reviews collected yet' if slug in no_data else 'no reviews this week'})"
+                for slug, name in selected if n_by.get(slug, 0) == 0]
+    if left_out:
+        out += " Not included: " + ", ".join(left_out) + "."
+    return out
+
+
+def names_phrase(names: list[str]) -> str:
+    names = list(names)
+    if len(names) <= 1:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def nodata_note(no_data_names: list[str], where: str) -> None:
+    """A one-line caption naming the hotels that have no reviews and so cannot appear in `where`."""
+    if no_data_names:
+        verb = "has" if len(no_data_names) == 1 else "have"
+        st.caption(f"{esc(names_phrase(no_data_names))} {verb} no reviews collected, so "
+                   f"{'it is' if len(no_data_names) == 1 else 'they are'} not in {where}.")
 
 
 def render_skipped(n: int) -> None:
@@ -111,9 +149,11 @@ def render_skipped(n: int) -> None:
 
 
 # 2. Insights --------------------------------------------------------------------------------
-def render_insights(insights: list, week_label: str) -> None:
+def render_insights(insights: list, week_label: str, coverage: str = "") -> None:
     st.subheader("This week at a glance")
     st.caption(f"Week of {week_label}. The most important things first.")
+    if coverage:
+        st.caption(esc(coverage))
     if not insights:
         empty_note("Nothing stands out this week, or there are not enough reviews yet to say.")
         return
@@ -167,16 +207,34 @@ def render_kpis(cmp) -> None:
 
 
 # 4. Properties ------------------------------------------------------------------------------
-def render_properties(breakdown: pd.DataFrame, top_complaint: dict[str, tuple[str, int]], topics_ready: bool) -> None:
+def no_data_card(nd) -> str:
+    detail = f'<div class="az-note" style="margin-top:.4rem">What our system recorded: {esc(nd.detail)}</div>' if nd.detail else ""
+    return (f'<div class="az-card empty"><div class="az-label">{esc(nd.name)}</div>'
+            f'<div style="margin:.3rem 0">{badge("No data", "bad", "Nothing has been collected for this hotel.")}</div>'
+            f'<div class="az-nodata-title">No reviews collected for this hotel yet</div>'
+            f'<div class="az-note" style="margin-top:.3rem">{esc(nd.reason)}</div>{detail}</div>')
+
+
+def render_properties(breakdown: pd.DataFrame, top_complaint: dict[str, tuple[str, int]], topics_ready: bool,
+                      no_data: dict | None = None, order: list[str] | None = None) -> None:
+    """One card per hotel. `no_data` (slug -> D.NoData) adds a card for each hotel with no reviews at all;
+    `order` is the slug order to draw them in (default: the breakdown's order, then the empty hotels)."""
     st.subheader("How each hotel is doing")
     st.caption("Same week as above. Compared with the week before.")
-    if breakdown is None or breakdown.empty:
+    no_data = no_data or {}
+    by_slug = {} if breakdown is None or breakdown.empty else {r.property: r for r in breakdown.itertuples(index=False)}
+    slugs = [x for x in (order if order is not None else list(by_slug) + [k for k in no_data if k not in by_slug])
+             if x in by_slug or x in no_data]
+    if not slugs:
         empty_note("No hotels to show for the current selection.")
         return
-    rows = list(breakdown.itertuples(index=False))
-    cols = st.columns(min(len(rows), 4))
-    for i, r in enumerate(rows):
+    cols = st.columns(min(len(slugs), 4))
+    for i, slug in enumerate(slugs):
         with cols[i % len(cols)]:
+            if slug not in by_slug:
+                html(no_data_card(no_data[slug]))
+                continue
+            r = by_slug[slug]
             n = int(r.n)
             if n:
                 complaint = top_complaint.get(r.property) if topics_ready else None
@@ -199,9 +257,10 @@ def render_properties(breakdown: pd.DataFrame, top_complaint: dict[str, tuple[st
 
 
 # 5. Trends ----------------------------------------------------------------------------------
-def render_trends(trend: pd.DataFrame, start: date, end: date) -> None:
+def render_trends(trend: pd.DataFrame, start: date, end: date, no_data_names: list[str] | None = None) -> None:
     st.header("Trends")
     st.caption(f"Each point is one week (Monday to Sunday). Shows at least the last 8 weeks, up to {end.strftime('%d %b %Y')}.")
+    nodata_note(no_data_names or [], "these trends")
     if trend is None or trend.empty or trend["n"].sum() == 0:
         empty_note("No reviews in this period, so there is no trend to draw.")
         return
@@ -247,8 +306,10 @@ def render_trends(trend: pd.DataFrame, start: date, end: date) -> None:
 
 # 6. Topics ----------------------------------------------------------------------------------
 def render_topics(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date, prop_names: list[str],
-                  prop_slugs: list[str], topics_ready: bool, db_path: Path) -> None:
+                  prop_slugs: list[str], topics_ready: bool, db_path: Path,
+                  no_data_names: list[str] | None = None) -> None:
     st.header("What guests talk about")
+    nodata_note(no_data_names or [], "these charts")
     if not topics_ready:
         st.info("Topic analysis has not been run yet. Once it has, you will see which issues come up most. "
                 f"(For the technical team: python -m insights.pipeline --db data/{esc(db_path.name)})")
@@ -341,10 +402,12 @@ def review_card(r, chips: list, labels: dict[str, str]) -> str:
     return "".join(parts)
 
 
-def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], topics_ready: bool) -> pd.DataFrame:
+def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], topics_ready: bool,
+                no_data_names: list[str] | None = None) -> pd.DataFrame:
     """Draw the review feed and return the filtered frame (used for the CSV download)."""
     st.header("Review feed")
     st.caption("Guest reviews in the selected dates and hotels. Reviewer names are never stored.")
+    nodata_note(no_data_names or [], "this feed")
     c1, c2, c3 = st.columns([1.3, 1, 1])
     topic_opts = {"": "Any topic"}
     if topics_ready:
@@ -405,13 +468,18 @@ def render_health(health: pd.DataFrame, feed_df: pd.DataFrame | None, chips: dic
     if health is None or health.empty:
         empty_note("No update history yet.")
     else:
+        never = pd.to_datetime(health["last_ok_at"], utc=True, errors="coerce").isna().tolist()
+        empty = (health["stored"].fillna(0).astype(int) == 0).tolist()
         t = pd.DataFrame({
             "Hotel": health["property_name"],
             "Reviews stored": health["stored"],
-            "Last successful update (Sydney)": [D.to_sydney(x) for x in health["last_ok_at"]],
+            "Last successful update (Sydney)": ["Never collected" if nv else D.to_sydney(x)
+                                                for x, nv in zip(health["last_ok_at"], never)],
             "Latest attempt": [_STATUS_WORDS.get(s, "Never run") if s else "Never run" for s in health["latest_status"]],
-            "Up to date?": ["No: over 48 hours old" if s else "Yes" for s in health["stale"].astype(bool)],
-            "Coverage": [c if isinstance(c, str) and c else "All reviews Booking.com shows" for c in health["coverage_note"]],
+            "Up to date?": ["No: never collected" if nv else "No: over 48 hours old" if s else "Yes"
+                            for s, nv in zip(health["stale"].astype(bool), never)],
+            "Coverage": ["No reviews collected" if e else c if isinstance(c, str) and c else "All reviews Booking.com shows"
+                         for c, e in zip(health["coverage_note"], empty)],
             "Problem details": [plain_text(e) if isinstance(e, str) and e else "" for e in health["latest_error"]],
         })
         st.dataframe(t, hide_index=True, width="stretch")

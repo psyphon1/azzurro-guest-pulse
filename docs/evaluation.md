@@ -165,7 +165,7 @@ stopping negation leaking, and `walked past` no longer counting as a location me
 - A 49-case set cannot support per-topic claims; several topics have fewer than 10 positive examples.
 - The `language` column is not used: non-English reviews will mostly get no tags.
 
-## Plan to get honest numbers
+## Plan to get honest numbers (written before the real evaluation; it has since been done, see section 1: the real labels are in `tests/fixtures/real_gold_labels.json`)
 
 1. Once the scraper has run, sample about 100 real reviews across all four properties (stratified by
    rating band, include some non-English and some very short ones).
