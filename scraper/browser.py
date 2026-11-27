@@ -61,8 +61,16 @@ def _check_page_url(page) -> None:
                            f"page): {clean_text(str(page.url), 80)!r}. Stopped before reading anything.")
 
 
-def launch_options(headless: bool) -> dict:
-    """Plain launch: no profile directory, no download folder, no sandbox-disabling flags."""
+# Off-screen window position for background collection: the browser is a normal, visible (headed) Chromium,
+# exactly what Booking.com already accepts; it is only placed where it does not cover the user's screen.
+_OFF_SCREEN = ["--window-position=-32000,-32000", "--window-size=1280,900"]
+
+
+def launch_options(headless: bool, hidden: bool = False) -> dict:
+    """Plain launch: no profile directory, no download folder, no sandbox-disabling flags.
+    `hidden` keeps the (headed) window off-screen for runs started from the dashboard."""
+    if hidden and not headless:
+        return {"headless": False, "args": list(_OFF_SCREEN)}
     return {"headless": headless}
 
 
@@ -152,14 +160,14 @@ def walk_pages(first: ParsedPage, next_available, advance, wait, delay) -> Itera
         yield last
 
 
-def fetch_pages(url: str, slug: str, headless: bool = False) -> Iterator[ParsedPage]:
+def fetch_pages(url: str, slug: str, headless: bool = False, hidden: bool = False) -> Iterator[ParsedPage]:
     """Yield review pages newest-first. Lazy: the caller can stop early and we stop clicking."""
     if not is_allowed_property_url(url):
         raise FetchError(f"Refused to open {clean_text(str(url), 80)!r}: not on the allow-list "
                          "(https://www.booking.com/hotel/<cc>/<slug>.html)")
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(**launch_options(headless))
+            browser = p.chromium.launch(**launch_options(headless, hidden))
             try:
                 page = browser.new_context(**context_options()).new_page()
                 page.goto(url, wait_until="domcontentloaded", timeout=60_000)

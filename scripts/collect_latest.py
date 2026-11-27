@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
 
         _write_status(state="collecting", started_at=started)
         print(f"[{time.strftime('%H:%M:%S')}] collecting new reviews (incremental, all hotels)", flush=True)
-        code = collect_main(["--property", "all", "--mode", "incremental", "--db", args.db])
+        code = collect_main(["--property", "all", "--mode", "incremental", "--hidden-window", "--db", args.db])
         _write_status(state="tagging", started_at=started, collect_exit=code)
         print(f"[{time.strftime('%H:%M:%S')}] tagging topics", flush=True)
         tag_main(["--db", args.db])

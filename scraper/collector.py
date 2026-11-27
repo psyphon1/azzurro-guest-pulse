@@ -101,9 +101,9 @@ def collect_property(slug: str, pages: Iterable[ParsedPage], store: ReviewStore,
             summary.rejected += len(page.rejected) + result.conflicts
             seen.update(r.review_key for r in page.reviews)
 
-            if mode == "incremental" and result.new == 0:
+            if mode == "incremental" and page.reviews and result.new < len(page.reviews):
                 stop = "no_new_reviews"
-                break  # newest-first: nothing new on this page means nothing new further back
+                break  # newest-first: the first review we already have means everything further back is stored
             if cutoff is not None and page.reviews and max(r.review_date for r in page.reviews) < cutoff:
                 stop = "date_window"
                 break  # newest-first: this whole page is older than the window, so everything further back is too

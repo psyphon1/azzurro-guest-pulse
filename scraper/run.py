@@ -89,6 +89,8 @@ def main(argv=None) -> int:
                     help=f"only collect reviews from the last N days: stop at the first page that is entirely older "
                          f"(default {DEFAULT_SINCE_DAYS})")
     ap.add_argument("--no-date-window", action="store_true", help="read all the way back (still limited by --max-pages)")
+    ap.add_argument("--hidden-window", action="store_true",
+                    help="keep the browser window off-screen (used by the dashboard's Fetch latest reviews button)")
     ap.add_argument("--pause", type=_pause, default=DEFAULT_PAUSE_S,
                     help=f"seconds to rest between hotels, randomised up to double (default {DEFAULT_PAUSE_S}; 0 = none)")
     args = ap.parse_args(argv)
@@ -106,7 +108,8 @@ def main(argv=None) -> int:
 
 def _collect_once(prop, store, args):
     since = None if args.no_date_window else args.since_days
-    s = collect_property(prop.slug, fetch_pages(prop.url, prop.slug), store, args.mode,
+    pages = fetch_pages(prop.url, prop.slug, hidden=True) if args.hidden_window else fetch_pages(prop.url, prop.slug)
+    s = collect_property(prop.slug, pages, store, args.mode,
                          max_pages=args.max_pages, since_days=since, today=_today())
     print(f"[{prop.name}] {s.status}: pages={s.pages} new={s.new} updated={s.updated} "
           f"rejected={s.rejected} stored={s.stored_total} reported_total={s.reported_total}"

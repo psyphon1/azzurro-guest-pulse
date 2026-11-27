@@ -94,8 +94,7 @@ def _fetch_progress() -> None:
     """While a collection runs, check every 5 seconds; reload the whole page when it has finished."""
     from dashboard.ui import collect
     if collect.running():
-        st.caption(f"Fetching new reviews ({esc(collect.status().get('state', 'running'))}). "
-                   "A browser window opens; the page updates when it finishes.")
+        st.caption("Fetching new reviews in the background. The page updates when it finishes.")
         return
     if st.session_state.pop("fetch_watching", False):
         st.rerun()
