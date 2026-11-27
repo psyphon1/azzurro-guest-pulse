@@ -11,7 +11,7 @@ METHOD = "keywords"
 MAX_TEXT_CHARS = 5_000
 MAX_EVIDENCE_CHARS = 300
 # Bump when the way text is cleaned or matched changes, so the pipeline re-tags reviews it already did.
-CLASSIFIER_REVISION = "3"
+CLASSIFIER_REVISION = "4"   # 4: reviews that are not English get no tags (insights.language)
 
 # Characters with no visible width, soft hyphens, bidi controls, variation selectors, control characters:
 # "d<zero-width space>irty" must read as "dirty".

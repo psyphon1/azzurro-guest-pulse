@@ -15,6 +15,7 @@ from dashboard.ui.privacy import mask_pii
 from dashboard.ui.style import (BAD, GOOD, INK, LINE, MUTED, TEAL, WARN, badge, clean_text, esc, one_line, plain_text)
 
 PAGE_SIZE = 10
+DATA_AGE_WARN_DAYS = 7      # newest review this many days behind today: say so
 POS_COL, MIX_COL, NEG_COL = GOOD, "#D9A027", BAD
 
 
@@ -113,14 +114,15 @@ def render_banner(db_path: Path, health: pd.DataFrame, no_data: dict | None = No
              f'<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
 
 
-def coverage_text(selected: list[tuple[str, str]], breakdown: pd.DataFrame | None, no_data: dict) -> str:
+def coverage_text(selected: list[tuple[str, str]], breakdown: pd.DataFrame | None, no_data: dict,
+                  period: str = "this week") -> str:
     """'Based on 3 of 4 hotels. Not included: Central Sydney (no reviews collected yet).'
     `selected` is [(slug, name)] for the hotels the staff member chose; a hotel counts when it has reviews in the week shown."""
     n_by = {} if breakdown is None or breakdown.empty else dict(zip(breakdown["property"], breakdown["n"].astype(int)))
     total = len(selected)
     covered = sum(1 for slug, _ in selected if n_by.get(slug, 0) > 0)
     out = f"Based on {covered} of {total} hotels." if total != 1 else f"Based on {covered} of 1 hotel."
-    left_out = [f"{name} ({'no reviews collected yet' if slug in no_data else 'no reviews this week'})"
+    left_out = [f"{name} ({'no reviews collected yet' if slug in no_data else 'no reviews ' + period})"
                 for slug, name in selected if n_by.get(slug, 0) == 0]
     if left_out:
         out += " Not included: " + ", ".join(left_out) + "."
@@ -149,13 +151,15 @@ def render_skipped(n: int) -> None:
 
 
 # 2. Insights --------------------------------------------------------------------------------
-def render_insights(insights: list, week_label: str, coverage: str = "") -> None:
-    st.subheader("This week at a glance")
+def render_insights(insights: list, week_label: str, coverage: str = "", lab: D.WeekLabels | None = None) -> None:
+    st.subheader(lab.heading if lab else "This week at a glance")
     st.caption(f"Week of {week_label}. The most important things first.")
+    if lab is not None and not lab.current:
+        st.caption('Where a sentence below says "this week", it means that week, not the week in progress.')
     if coverage:
         st.caption(esc(coverage))
     if not insights:
-        empty_note("Nothing stands out this week, or there are not enough reviews yet to say.")
+        empty_note(f"Nothing stands out {lab.in_week if lab else 'this week'}, or there are not enough reviews yet to say.")
         return
     order = {"alert": 0, "good": 1, "info": 2}
     tags = {"alert": "&#9650; Needs attention", "good": "&#10003; Good news", "info": "&#8505; For your info"}
@@ -167,15 +171,16 @@ def render_insights(insights: list, week_label: str, coverage: str = "") -> None
 
 
 # 3. KPIs ------------------------------------------------------------------------------------
-def render_kpis(cmp) -> None:
+def render_kpis(cmp, lab: D.WeekLabels | None = None) -> None:
     cur, prev = cmp.current, cmp.previous
+    lab = lab or D.week_labels(D.monday_of(D.today_sydney()), D.today_sydney())
     cols = st.columns([1, 1, 1.1, 0.9, 1.6])
     with cols[0]:
-        html(f'<div class="az-card"><div class="az-label">Guest score this week</div>'
+        html(f'<div class="az-card"><div class="az-label">{esc(lab.score)}</div>'
              f'<div class="az-value">{fmt_score(cur.avg_rating)}<small>{"" if cur.avg_rating is None else " / 10"}</small></div>'
              f'<div class="az-note">based on {reviews_word(cur.n)}</div>{low_badge(cur.n) if cur.n else ""}</div>')
     with cols[1]:
-        html(f'<div class="az-card"><div class="az-label">Previous week</div>'
+        html(f'<div class="az-card"><div class="az-label">{esc(lab.previous)}</div>'
              f'<div class="az-value">{fmt_score(prev.avg_rating)}<small>{"" if prev.avg_rating is None else " / 10"}</small></div>'
              f'<div class="az-note">based on {reviews_word(prev.n)}</div>{low_badge(prev.n) if prev.n else ""}</div>')
     with cols[2]:
@@ -186,8 +191,8 @@ def render_kpis(cmp) -> None:
              f'<div class="az-value" style="font-size:1.5rem">{change_html(cmp.delta)}</div>{caution}'
              f'<div class="az-note">Average score, 1 to 10 scale</div></div>')
     with cols[3]:
-        html(f'<div class="az-card"><div class="az-label">Reviews this week</div>'
-             f'<div class="az-value">{cur.n}</div><div class="az-note">last week: {prev.n}</div></div>')
+        html(f'<div class="az-card"><div class="az-label">{esc(lab.count)}</div>'
+             f'<div class="az-value">{cur.n}</div><div class="az-note">{esc(lab.prior)}: {prev.n}</div></div>')
     with cols[4]:
         if cur.n:
             def pct(k):
@@ -202,8 +207,43 @@ def render_kpis(cmp) -> None:
             if cur.n < m.LOW_SAMPLE_BELOW:
                 body += "<div>" + low_badge(cur.n) + "</div>"
         else:
-            body = '<div class="az-note">No reviews this week.</div>'
+            body = f'<div class="az-note">No reviews {esc(lab.in_week)}.</div>'
         html(f'<div class="az-card"><div class="az-label">Positive vs negative</div>{body}</div>')
+
+
+def week_so_far_sentence(cur, ref, today: date, focus: date) -> str:
+    """One plain sentence about the unfinished current week, set beside the focus week `ref`."""
+    start = D.monday_of(today)
+    head = f"This week so far ({D.short_day(start)} to today): {cur.avg_rating:.1f} from {reviews_word(cur.n)}"
+    if ref.avg_rating is None:
+        head += f". There were no reviews in the week of {D.short_day(focus)} to compare with."
+    else:
+        last_full = focus == start - timedelta(days=7)
+        which = "the last full week" if last_full else f"the week of {D.short_day(focus)}"
+        head += f", compared with {ref.avg_rating:.1f} for {which}."
+    head += " A part-week average moves more, so read it with the count."
+    if cur.n < m.LOW_SAMPLE_BELOW:
+        head += (f" Only {reviews_word(cur.n)} so far, so treat this as a hint, not a trend.")
+    return head
+
+
+def render_week_so_far(cur, ref, today: date, focus: date) -> None:
+    """A compact strip under the score cards: the live week, when the cards describe an older, finished week.
+    Shown only if the live week already has at least one review among the selected hotels."""
+    if cur is None or cur.n == 0 or cur.avg_rating is None:
+        return
+    html(f'<div class="az-fresh" style="margin-top:.7rem">{esc(week_so_far_sentence(cur, ref, today, focus))}</div>')
+
+
+def render_data_age(newest: date, today: date) -> None:
+    """Say how old the newest review is when it is a week or more behind the clock, so a stale snapshot is never
+    mistaken for this week's data."""
+    days = (today - newest).days
+    if days < DATA_AGE_WARN_DAYS:
+        return
+    html(f'<div class="az-fresh warn"><b>&#9888; This data is not current.</b> The newest review in this data is from '
+         f'{esc(D.short_day(newest))} {newest.year}, {days} days ago, so the numbers below describe an earlier '
+         f'week, not the week in progress.</div>')
 
 
 # 4. Properties ------------------------------------------------------------------------------
@@ -216,11 +256,13 @@ def no_data_card(nd) -> str:
 
 
 def render_properties(breakdown: pd.DataFrame, top_complaint: dict[str, tuple[str, int]], topics_ready: bool,
-                      no_data: dict | None = None, order: list[str] | None = None) -> None:
+                      no_data: dict | None = None, order: list[str] | None = None,
+                      lab: D.WeekLabels | None = None) -> None:
     """One card per hotel. `no_data` (slug -> D.NoData) adds a card for each hotel with no reviews at all;
     `order` is the slug order to draw them in (default: the breakdown's order, then the empty hotels)."""
     st.subheader("How each hotel is doing")
     st.caption("Same week as above. Compared with the week before.")
+    lab = lab or D.week_labels(D.monday_of(D.today_sydney()), D.today_sydney())
     no_data = no_data or {}
     by_slug = {} if breakdown is None or breakdown.empty else {r.property: r for r in breakdown.itertuples(index=False)}
     slugs = [x for x in (order if order is not None else list(by_slug) + [k for k in no_data if k not in by_slug])
@@ -246,13 +288,13 @@ def render_properties(breakdown: pd.DataFrame, top_complaint: dict[str, tuple[st
                         ctext += (f'<br><span style="font-size:.78rem">{complaint[1]} more negative '
                                   f'review{"s" if complaint[1] != 1 else ""} had no comment.</span>')
                 else:
-                    ctext = "No complaint topics found this week."
+                    ctext = f"No complaint topics found {lab.in_week}."
                 body = (f'<div class="az-value">{fmt_score(r.avg_rating)}<small> / 10</small></div>'
                         f'<div>{change_html(r.delta)}</div>'
-                        f'<div class="az-note">{esc(reviews_word(n))} this week, {esc(reviews_word(int(r.prev_n)))} last week</div>'
+                        f'<div class="az-note">{esc(reviews_word(n))} {esc(lab.in_week)}, {int(r.prev_n)} {esc(lab.prior_in)}</div>'
                         f'<div>{low_badge(n)}</div><div class="az-note" style="margin-top:.4rem">{ctext}</div>')
             else:
-                body = '<div class="az-note" style="margin-top:.6rem">No reviews this week.</div>'
+                body = f'<div class="az-note" style="margin-top:.6rem">No reviews {esc(lab.in_week)}.</div>'
             html(f'<div class="az-card"><div class="az-label">{esc(r.property_name)}</div>{body}</div>')
 
 
@@ -320,6 +362,13 @@ def render_topics(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date
     sent = "negative" if polarity == "negative" else "positive"
     color = BAD if polarity == "negative" else GOOD
     shares = m.topic_shares(df, topics, start, end, polarity=polarity, properties=prop_slugs)
+    counts = m.comment_counts(df, start, end, polarity=polarity, properties=prop_slugs)
+    non_english = int(getattr(counts, "n_non_english", 0) or 0)     # same rule as the pipeline; 0 until it exists
+    if non_english:
+        many = non_english != 1
+        st.caption(f"{non_english} of {counts.n_with_comment} {sent} reviews with a comment in this period "
+                   f"{'are' if many else 'is'} not in English, so {'they are' if many else 'it is'} left out of these "
+                   f"topic counts. The totals in the chart labels still include {'them' if many else 'it'}.")
     left, right = st.columns([1.1, 1])
     with left:
         st.markdown(f"**Top {'complaints' if polarity == 'negative' else 'things guests praise'}**")
@@ -462,9 +511,39 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
 _STATUS_WORDS = {"ok": "Working", "blocked": "Blocked by Booking.com", "failed": "Failed", "running": "Running now"}
 
 
-def render_health(health: pd.DataFrame, feed_df: pd.DataFrame | None, chips: dict, labels: dict[str, str]) -> None:
+MAX_REPEAT_NOTICES = 3
+REPEAT_SAMPLE_CHARS = 80
+
+
+def month_year(ts) -> str:
+    return pd.Timestamp(ts).strftime("%b %Y") if pd.notna(ts) else "an unknown date"
+
+
+def repeated_notice(r) -> str:
+    """One plain sentence (HTML-safe) about a group of reviews that share a score and text, plus a short sample.
+    The sample is guest text: control characters out, email and phone masked, cut to 80 characters, then escaped."""
+    first, last = month_year(r.first_date), month_year(r.last_date)
+    span = first if first == last else f"{first} to {last}"
+    sample = mask_pii(clean_text(r.sample_text, 500)).strip()
+    cut = sample[:REPEAT_SAMPLE_CHARS] + ("..." if len(sample) > REPEAT_SAMPLE_CHARS else "")
+    example = f' Example: &ldquo;{esc(cut)}&rdquo;' if sample else ""
+    return (f"&#8505; Repeated reviews: {int(r.n)} reviews at {esc(r.property_name)} share the same score and "
+            f"text ({esc(span)}). They are included in every number on this page; read them in the feed before "
+            f"drawing conclusions.{example}")
+
+
+def render_repeated(repeated: pd.DataFrame | None) -> None:
+    if repeated is None or repeated.empty:
+        return
+    for r in repeated.head(MAX_REPEAT_NOTICES).itertuples(index=False):
+        html(f'<div class="az-fresh">{repeated_notice(r)}</div>')
+
+
+def render_health(health: pd.DataFrame, feed_df: pd.DataFrame | None, chips: dict, labels: dict[str, str],
+                  repeated: pd.DataFrame | None = None) -> None:
     st.header("Data health")
     st.caption("When each hotel's reviews were last collected, and whether the last attempt worked.")
+    render_repeated(repeated)
     if health is None or health.empty:
         empty_note("No update history yet.")
     else:
@@ -516,8 +595,8 @@ Every percentage is shown with its count, for example "2 of 5".
 
 **Topics.** Topics are found automatically by looking for key words in what guests wrote they liked or disliked. It is a
 quick guide, not a perfect read: open the review feed to check the actual words. Reviews where the guest left only a score
-cannot be sorted into topics, so topic counts say "of N reviews with a comment". Topic key words are mainly English, so reviews in
-other languages may get fewer topic tags.
+cannot be sorted into topics, so topic counts say "of N reviews with a comment". Topic tags are only given to reviews written in English (the key words are English), so reviews in
+other languages get no tags; the Topics section says how many reviews that leaves out.
 
 **Privacy.** Reviewer names are never stored, and neither are photos. Guests sometimes type an email address or phone number into
 their review text: these are hidden before anything is shown or downloaded (an email appears as `j***@***.com`, a phone number as

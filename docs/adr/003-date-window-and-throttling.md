@@ -7,7 +7,7 @@ Status: accepted. Refines ADR 002.
 | Hotel | Result | Cause |
 |---|---|---|
 | Potts Point | 144 pages, 1,440 stored, Booking.com reported 2,386, flagged `DRIFT` | The "Next page" button vanished after a full page and the run ended as a normal `ok`. A real last page is almost never full. |
-| Central Sydney | blocked twice ("Bot check did not clear") | Both attempts started straight after a long crawl from the same connection. The page loads fine when opened alone. Most likely throttling. |
+| Central Sydney | blocked ("Bot check did not clear") | Cause unknown. The run came straight after a long crawl, which fits throttling, but Darling Harbour then started 0.2 s later on the same connection and ran 201 pages unblocked, which does not (see ADR 004). The page loads fine when opened alone. |
 | Darling Harbour | 201 pages, 2,010 stored of 4,305 | The old internal 200-page safety stop. Reviews reached back about 20 months. |
 
 Two lessons. First, the drift check worked: it caught an incomplete run that would otherwise have looked fine.
@@ -18,7 +18,7 @@ Second, our own code had mistaken a missing button for the end of the list.
 1. **A missing "Next page" button is not proof of the end** (`scraper/pagination.py`). It is trusted as the end only if
    the last page was short, or we already hold at least 90% of what Booking.com reports, or there is nothing to compare
    with. Otherwise the scraper waits 5 seconds and looks again, up to 3 times, then stops with `EndedEarlyError`, recorded
-   as `blocked` with a message saying how many reviews were read and that throttling is the likely cause.
+   as `blocked` with a message saying how many reviews were read and that throttling is a possible cause.
 2. **Date window instead of a page count as the main limit** (`--since-days`, default 365). Operations needs recent
    reviews, and reviews from two or three years ago add runtime and risk but no insight. The run stops at the first page
    that is entirely older than the window. The page cap (ADR 002) stays as a hard ceiling. `--no-date-window` reads further back.
@@ -40,6 +40,6 @@ Drift protection is still active through the early-ending check in decision 1.
 
 ## Limits
 
-- Throttling is a hypothesis based on three observations, not something Booking.com confirmed.
+- Throttling is a hypothesis. Two observations fit it and one contradicts it (ADR 004); Booking.com has not confirmed anything.
 - The retry waits minutes; a hotel that stays blocked is reported and left for the next scheduled run.
 - Reviews older than the window that are already stored stay stored. Weekly metrics ignore them.

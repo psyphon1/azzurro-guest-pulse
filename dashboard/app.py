@@ -61,18 +61,21 @@ except Exception:  # unreadable, corrupt or half-built file: say so politely; th
     st.stop()
 
 def render_dashboard(db_path, bundle) -> None:
-    df_all, skipped = D.clean_reviews(bundle.reviews)
+    today = D.today_sydney()      # one reading of the Sydney clock for the whole run
+    df_all, skipped = D.clean_reviews(bundle.reviews, today)
     topics_all, health = D.clean_topics(bundle.topics, df_all), bundle.health
     if D.is_sample(db_path):     # a snapshot must never be mistaken for live data: say so above everything else
         S.html(f'<div class="az-banner-demo">{esc(D.sample_banner_text(health))}</div>')
     no_data = D.hotels_without_reviews(health, df_all)     # hotels with no usable review at all (e.g. blocked)
     S.render_banner(db_path, health, no_data)
     S.render_skipped(skipped)
+    # Disclosure only (the other module may not have this yet): groups of reviews that share a score and text.
+    repeated = m.repeated_reviews(df_all) if hasattr(m, "repeated_reviews") and not df_all.empty else None
 
     if df_all.empty:
         st.info("There are no reviews in the database yet. Run the review collection first "
                 "(python -m scraper.run --property all --mode full), then refresh this page.")
-        S.render_health(health, None, {}, {})
+        S.render_health(health, None, {}, {}, repeated)
         S.render_howto()
         st.stop()
 
@@ -90,7 +93,7 @@ def render_dashboard(db_path, bundle) -> None:
 
     first, last = df_all["review_date"].min().date(), df_all["review_date"].max().date()
     try:
-        latest_week = m.latest_complete_week(df_all)
+        latest_week = m.latest_complete_week(df_all, today)
     except Exception:
         latest_week = None
     if latest_week is None or pd.isna(latest_week):
@@ -104,7 +107,7 @@ def render_dashboard(db_path, bundle) -> None:
         if custom is None:
             st.info("Pick both a start and an end date in the sidebar.")
             st.stop()
-    start, end, focus = D.preset_range(preset, latest_week, D.sydney_today(), first, last, custom)
+    start, end, focus = D.preset_range(preset, latest_week, today, first, last, custom)
     with st.sidebar:
         st.caption(f"Showing {D.nice_range(start, end)}.")
         st.caption(f"Data file: {esc(db_path.name)}")
@@ -125,35 +128,41 @@ def render_dashboard(db_path, bundle) -> None:
         st.info(f"No reviews have been collected for the selected hotel{'s' if many else ''} yet, so there are no "
                 "scores, trends or topics to show. The card below says why. Select another hotel in the sidebar to see its reviews.")
         S.render_properties(None, {}, topics_ready, sel_nodata, sel_slugs)
-        S.render_health(health, None, {}, {})
+        S.render_health(health, None, {}, {}, repeated)
         S.render_howto()
         st.stop()
+    S.render_data_age(df["review_date"].max().date(), today)
     labels = D.topic_labels()
     df_range = df[(df["review_date"] >= pd.Timestamp(start)) & (df["review_date"] <= pd.Timestamp(end))]
 
     if df_range.empty:
         st.info(f"No reviews between {D.nice_range(start, end)} for the selected hotels. "
                 "Try a longer time period (for example Last 12 weeks or All time) or select more hotels.")
-        S.render_health(health, None, {}, {})
+        S.render_health(health, None, {}, {}, repeated)
         S.render_howto()
         st.stop()
 
+    lab = D.week_labels(focus, today)
     week_label = D.nice_range(focus, focus + timedelta(days=6))
-    if preset == "This week so far":
+    if lab.current:
         week_label += " (week not finished)"
 
     # --- 2-4: the focus week ------------------------------------------------------------------------
     breakdown = m.property_breakdown(df, focus)
     if breakdown is not None and not breakdown.empty:
         breakdown = breakdown[breakdown["property"].isin(sel_slugs)]
-    coverage = S.coverage_text(list(zip(sel_slugs, sel_names)), breakdown, no_data)
-    S.render_insights(m.generate_insights(df, topics, focus), week_label, coverage)
+    coverage = S.coverage_text(list(zip(sel_slugs, sel_names)), breakdown, no_data, lab.in_week)
+    S.render_insights(m.generate_insights(df, topics, focus), week_label, coverage, lab)
 
     st.header("Guest score")
     if start < focus or end > focus + timedelta(days=6):
         st.caption(f"The score cards and hotel cards describe the week of {week_label}. Trends, topics and the review feed cover {D.nice_range(start, end)}.")
+    elif not lab.current:
+        st.caption(f"The score cards and hotel cards describe the week of {week_label}. It is a finished week, not the week in progress.")
     st.caption(coverage)
-    S.render_kpis(m.compare_weeks(df, focus))
+    S.render_kpis(m.compare_weeks(df, focus), lab)
+    if not lab.current:
+        S.render_week_so_far(m.week_summary(df, D.monday_of(today)), m.week_summary(df, focus), today, focus)
 
     top_complaint: dict = {}
     if topics_ready and breakdown is not None:
@@ -167,7 +176,7 @@ def render_dashboard(db_path, bundle) -> None:
                 top = ts.sort_values("count", ascending=False).iloc[0]
                 top_complaint[r.property] = (f"{top['label']} ({int(top['count'])} of {int(top['n_reviews'])} "
                                              f"negative reviews with a comment)", extra)
-    S.render_properties(breakdown, top_complaint, topics_ready, sel_nodata, sel_slugs)
+    S.render_properties(breakdown, top_complaint, topics_ready, sel_nodata, sel_slugs, lab)
 
     # --- 5-6: range-wide views ----------------------------------------------------------------------
     trend_start = min(start, D.monday_of(end) - timedelta(weeks=7))
@@ -177,7 +186,7 @@ def render_dashboard(db_path, bundle) -> None:
     # --- 7-9: feed, health, help --------------------------------------------------------------------
     chips = D.topic_chips(topics)
     feed_df = S.render_feed(df_range, chips, labels, topics_ready, nodata_names)
-    S.render_health(health, feed_df, chips, labels)
+    S.render_health(health, feed_df, chips, labels, repeated)
     S.render_howto()
 
 

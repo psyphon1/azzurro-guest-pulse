@@ -671,8 +671,34 @@ def test_insights_unreplied_negative_count():
             (P1, 9, "2026-03-06"), (P1, 8, "2026-03-07")]
     ins = metrics.generate_insights(mk(rows), tp([]), W)
     u = next(i for i in ins if "no hotel reply" in i.text)
-    assert u.text.startswith("3 negative reviews have no hotel reply yet")
-    assert "2 of them from this week" in u.text and u.kind == "alert" and u.n == 3
+    assert u.text.startswith("3 negative reviews in the last 90 days have no hotel reply yet")
+    assert "(2 of them from this week)" in u.text and u.kind == "alert" and u.n == 3
+
+
+def test_unreplied_window_constant():
+    assert metrics.UNREPLIED_WINDOW_DAYS == 90
+
+
+def test_insights_unreplied_counts_only_the_last_90_days_before_the_week_ends():
+    # Week ends Sun 2026-03-08. 90 days before is 2025-12-08: that day is in, the day before is out.
+    rows = [(P1, 3, "2026-03-03"), (P1, 3, "2025-12-08"), (P1, 3, "2025-12-07"), (P2, 2, "2025-01-15")] * 1
+    rows += [(P2, 2, "2024-06-01")] * 5 + [(P1, 9, "2026-03-04")] * 5
+    ins = metrics.generate_insights(mk(rows), tp([]), W)
+    u = next(i for i in ins if "no hotel reply" in i.text)
+    assert u.n == 2
+    assert u.text.startswith("2 negative reviews in the last 90 days have no hotel reply yet (1 of them from this week).")
+    assert not u.text.startswith("11")
+
+
+def test_insights_unreplied_singular_and_most_clause():
+    rows = [(P1, 3, "2026-03-03")] + [(P1, 9, "2026-03-04")] * 5
+    u = next(i for i in metrics.generate_insights(mk(rows), tp([]), W) if "no hotel reply" in i.text)
+    assert u.text == "1 negative review in the last 90 days has no hotel reply yet (1 of them from this week)."
+
+
+def test_insights_unreplied_skipped_when_only_old_backlog():
+    rows = [(P1, 3, "2025-06-01")] * 4 + [(P1, 9, "2026-03-04")] * 5
+    assert not any("no hotel reply" in i.text for i in metrics.generate_insights(mk(rows), tp([]), W))
 
 
 def test_insights_unreplied_ignores_reviews_after_the_week_and_skips_when_zero():
@@ -775,8 +801,22 @@ def test_comment_counts(text_world):
 
 
 def test_comment_counts_non_english_codes_and_unknown_language():
-    df = mk_text([(P1, 3, "2026-03-03", None, "x", lang) for lang in ("en", "en-GB", "xu", "xt", "zh", "ja", None)])
-    assert metrics.comment_counts(df, W, date(2026, 3, 8)).n_non_english == 4    # xu xt zh ja; unknown is not counted
+    # Same rule as the pipeline (insights.language): xu with English text is English, xt with Chinese is not;
+    # a missing code is judged by the text.
+    eng, zh = "The room was dirty and the street was noisy", "房間很髒而且很吵"
+    rows = [("en", eng), ("en-GB", eng), ("xu", eng), ("xu", eng), ("xt", zh), ("zh", zh), ("ja", zh), (None, eng), (None, zh)]
+    df = mk_text([(P1, 3, "2026-03-03", None, text, lang) for lang, text in rows])
+    assert metrics.comment_counts(df, W, date(2026, 3, 8)).n_non_english == 4    # xt zh ja and the unknown Chinese
+
+
+def test_comment_counts_uses_the_pipelines_rule_on_both_texts():
+    from insights.language import is_english_like
+    df = mk_text([(P1, 3, "2026-03-03", "The location", "Le wifi ne marche pas, location loin", "xu"),
+                  (P1, 3, "2026-03-03", None, "Le wifi ne marche pas, location loin", "fr"),
+                  (P1, 3, "2026-03-03", None, "The staff was rude and the room was dirty", "fr")])
+    expected = sum(not is_english_like(r.language, r.liked, r.disliked) for r in df.itertuples())
+    assert expected == 2
+    assert metrics.comment_counts(df, W, date(2026, 3, 8)).n_non_english == expected
 
 
 def test_comment_counts_empty():

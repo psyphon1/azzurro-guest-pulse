@@ -83,7 +83,9 @@ def sample_banner_text(health: pd.DataFrame | None) -> str:
     return f"SAMPLE DATA: a snapshot of real public Booking.com reviews, not live. Collected on {when}."
 
 
-def sydney_today() -> date:
+def today_sydney() -> date:
+    """Today's date on the Sydney clock. Everything on the page that depends on "today" calls this (as
+    `D.today_sydney()`, looked up at call time) so a test can replace it to freeze the date."""
     return datetime.now(SYDNEY).date()
 
 
@@ -101,7 +103,7 @@ def clean_reviews(df: pd.DataFrame, today: date | None = None) -> tuple[pd.DataF
     """Drop rows that cannot be real reviews and say how many: unreadable date, date before 2000 or in the
     future, score missing or outside 1 to 10. One poisoned row (say, a review dated 2099) must not decide
     which week the whole dashboard calls 'the latest'."""
-    today = today or sydney_today()
+    today = today or today_sydney()
     ok = (df["review_date"].notna()
           & (df["review_date"] >= pd.Timestamp(FIRST_PLAUSIBLE_DATE))
           & (df["review_date"] <= pd.Timestamp(today + FUTURE_SLACK))
@@ -190,7 +192,37 @@ def preset_range(preset: str, latest_week: date, today: date, first: date, last:
 
 
 def nice_range(start: date, end: date) -> str:
-    return f"{start.strftime('%a %d %b')} to {end.strftime('%a %d %b %Y')}"
+    return f"{short_day(start)} to {short_day(end)} {end.year}"
+
+
+def short_day(d: date) -> str:
+    """'Mon 9 Nov' (no zero padding, which strftime cannot do portably)."""
+    return f"{d.strftime('%a')} {d.day} {d.strftime('%b')}"
+
+
+@dataclass(frozen=True)
+class WeekLabels:
+    """The words for one focus week. Only the real current Sydney week may be called "this week"; any other
+    week is named by its dates, so the cards can never claim to be live when they describe a finished week."""
+    current: bool
+    heading: str        # "Week of 16 Nov at a glance" / "This week so far at a glance"
+    score: str          # card title for the average score
+    previous: str       # card title for the week before
+    count: str          # card title for the number of reviews
+    in_week: str        # "in the week of Mon 16 Nov" / "this week so far", for sentences
+    prior: str          # the week before, as a label: "last week" / "previous week"
+    prior_in: str       # the week before, in a sentence: "last week" / "in the previous week"
+
+
+def week_labels(focus: date, today: date) -> WeekLabels:
+    mon = short_day(focus)
+    if focus == monday_of(today):
+        return WeekLabels(True, "This week so far at a glance", "Guest score, this week so far",
+                          f"Previous week ({short_day(focus - timedelta(days=7))})", "Reviews, this week so far",
+                          "this week so far", "last week", "last week")
+    return WeekLabels(False, f"Week of {focus.day} {focus.strftime('%b')} at a glance", f"Guest score, week of {mon}",
+                      f"Previous week ({short_day(focus - timedelta(days=7))})", f"Reviews, week of {mon}",
+                      f"in the week of {mon}", "previous week", "in the previous week")
 
 
 # --- review feed ------------------------------------------------------------------------------

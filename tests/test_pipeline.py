@@ -9,9 +9,9 @@ from scraper.models import Review
 from scraper.store import ReviewStore
 
 
-def make_review(key="r1", liked="Great location.", disliked="The room was dirty.", **kw):
+def make_review(key="r1", liked="Great location.", disliked="The room was dirty.", language="en", **kw):
     return Review(review_key=key, property="olympic-paddington", rating=6.0,
-                  review_date=date(2026, 11, 20), liked=liked, disliked=disliked, **kw)
+                  review_date=date(2026, 11, 20), liked=liked, disliked=disliked, language=language, **kw)
 
 
 @pytest.fixture
@@ -122,3 +122,60 @@ def test_cli_prints_one_line_summary(db_path, store, capsys):
     out = capsys.readouterr().out.strip().splitlines()
     assert len(out) == 1
     assert "1 reviews seen" in out[0] and "2 tags written" in out[0]
+
+
+# ---------------------------------------------------------------- language gate
+FRENCH = "La chambre etait sale et le wifi ne marchait pas, la location est loin de tout."
+
+
+def test_non_english_review_gets_no_tags_and_is_remembered(db_path, store):
+    store.upsert_reviews([make_review("fr1", liked=None, disliked=FRENCH, language="fr"), make_review("en1")])
+
+    first = classify_all(db_path)
+
+    assert first.reviews_classified == 2
+    assert tags(db_path, "fr1") == []
+    assert [t[1] for t in tags(db_path, "en1")] == ["cleanliness", "location"]
+    assert classify_all(db_path) == ClassifyResult(2, 0, 2, 0)          # not re-run
+
+
+def test_xu_english_text_is_tagged_but_xt_chinese_is_not(db_path, store):
+    store.upsert_reviews([
+        make_review("xu1", liked="The location is perfect.", disliked=None, language="xu"),
+        make_review("xt1", liked=None, disliked="房間很髒，而且有wifi問題 location", language="xt"),
+    ])
+    classify_all(db_path)
+    assert [t[1] for t in tags(db_path, "xu1")] == ["location"]
+    assert tags(db_path, "xt1") == []
+
+
+def test_missing_language_is_judged_by_text(db_path, store):
+    store.upsert_reviews([
+        make_review("n1", liked=None, disliked="The room was dirty and the street was noisy.", language=None),
+        make_review("n2", liked=None, disliked=FRENCH, language=None),
+    ])
+    classify_all(db_path)
+    assert [t[1] for t in tags(db_path, "n1")] == ["cleanliness", "noise"]
+    assert tags(db_path, "n2") == []
+
+
+def test_classifier_revision_bump_removes_tags_given_to_non_english_reviews(db_path, store, monkeypatch):
+    store.upsert_reviews([make_review("fr1", liked=None, disliked=FRENCH, language="fr")])
+    # Simulate the old behaviour: a tag written under the previous classifier revision.
+    real = pipeline.classify_review
+    monkeypatch.setattr(pipeline, "classify_review", lambda liked, disliked: real("Great location.", None))
+    monkeypatch.setattr(pipeline, "CLASSIFIER_REVISION", "old")
+    monkeypatch.setattr(pipeline, "is_english_like", lambda *a: True)
+    classify_all(db_path)
+    assert len(tags(db_path, "fr1")) == 1
+
+    monkeypatch.undo()
+    result = classify_all(db_path)
+
+    assert result.reviews_classified == 1
+    assert tags(db_path, "fr1") == []
+
+
+def test_classifier_revision_is_bumped_for_the_language_gate():
+    from insights.classify import CLASSIFIER_REVISION
+    assert int(CLASSIFIER_REVISION) >= 4

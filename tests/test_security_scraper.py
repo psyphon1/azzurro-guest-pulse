@@ -1262,10 +1262,8 @@ def test_no_database_env_cookie_or_key_files_are_tracked():
     assert bad == []
 
 
-@pytest.mark.xfail(reason="OPEN HAND-OFF: .gitignore (outside the scraper scope) does not ignore data/reviews.db, so "
-                          "'git add .' would commit scraped reviews. Add 'data/*.db' to .gitignore and this passes.",
-                   strict=False)
 def test_the_live_database_path_is_git_ignored():
+    # 'git add .' must never commit scraped reviews: data/*.db is in .gitignore (the sample snapshot needs git add -f).
     import subprocess
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent

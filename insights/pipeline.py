@@ -9,6 +9,7 @@ import sys
 from dataclasses import dataclass
 
 from insights.classify import CLASSIFIER_REVISION, MAX_TEXT_CHARS, classify_review
+from insights.language import is_english_like
 from insights.topics import TAXONOMY_VERSION
 
 SCHEMA = """
@@ -51,14 +52,15 @@ def classify_all(db_path: str) -> ClassifyResult:
             "SELECT review_key, content_hash, taxonomy_version FROM review_topics_state")}
         seen = classified = skipped = written = 0
         # substr(): the classifier reads at most MAX_TEXT_CHARS, so a 5 MB review is never pulled into memory whole.
-        rows = db.execute("SELECT review_key, substr(liked, 1, ?), substr(disliked, 1, ?), content_hash FROM reviews",
+        rows = db.execute("SELECT review_key, substr(liked, 1, ?), substr(disliked, 1, ?), content_hash, language FROM reviews",
                           (MAX_TEXT_CHARS * 2, MAX_TEXT_CHARS * 2)).fetchall()
-        for key, liked, disliked, content_hash in rows:
+        for key, liked, disliked, content_hash, language in rows:
             seen += 1
             if done.get(key) == (content_hash, state_version):
                 skipped += 1
                 continue
-            tags = classify_review(liked, disliked)
+            # The keyword classifier only understands English: other languages get no tags (but are remembered).
+            tags = classify_review(liked, disliked) if is_english_like(language, liked, disliked) else []
             db.execute("DELETE FROM review_topics WHERE review_key=?", (key,))
             db.executemany(
                 "INSERT INTO review_topics (review_key, topic, polarity, evidence, method, taxonomy_version)"

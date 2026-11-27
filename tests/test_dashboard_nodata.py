@@ -68,8 +68,10 @@ def test_hotel_with_reviews_but_none_this_week_says_so(monkeypatch, db):
     con.execute("UPDATE reviews SET review_date = '2026-10-01' WHERE property = 'chateau-de-venus'")
     con.commit()
     con.close()
+    import dashboard.ui.data as D
+    monkeypatch.setattr(D, "today_sydney", lambda: NEWEST)      # Fri 27 Nov: the latest full week is the one of Mon 16 Nov
     text = page_text(run_app(monkeypatch, db))
-    assert "No reviews this week" in text
+    assert "No reviews in the week of Mon 16 Nov" in text     # the card names the week by its dates
     assert text.count("No reviews collected for this hotel yet") == 1
 
 

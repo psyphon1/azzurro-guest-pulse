@@ -1,4 +1,6 @@
-# Azzurro Review Insights
+# Guest Pulse
+
+*The pulse of what guests say about Azzurro Hotels on Booking.com.*
 
 Collects public Booking.com guest reviews for four Azzurro Hotels properties and turns them into a
 dashboard that operations staff can read on a Monday morning: how each hotel scored this week, what
@@ -8,7 +10,7 @@ changed since last week, what guests keep complaining about, and which bad revie
 |---|---|---|
 | Olympic Hotel Paddington | olympic-paddington | Yes, complete (133 reviews) |
 | Potts Point | venus-potts-point-sydney | Partly: 1,440 stored of 2,386 reported |
-| Central Sydney | venus-surry-hills | **No.** Blocked twice, skipped (see below) |
+| Central Sydney | venus-surry-hills | **No.** Blocked, skipped (see below) |
 | Darling Harbour | chateau-de-venus | Partly: 2,010 stored of 4,305 reported |
 
 **Read this first: this submission has data for 3 of the 4 hotels, and two of those three are partial.**
@@ -65,13 +67,18 @@ REVIEWS_DB=data/demo.db streamlit run dashboard/app.py     # shows a "DEMO DATA"
 Streamlit prints a local address (normally http://localhost:8501); open it in a browser. If the database file does not
 exist yet, the dashboard says so and shows these same commands instead of failing.
 
-Run the tests: `python -m pytest -q` (no network needed; about 940 tests, around 35 seconds).
+Run the tests: `python -m pytest -q` (no network needed; about 1,030 tests, around 40 seconds).
+
+Browser tests (real Chromium driving the real dashboard, watching the console, network and server log):
+`python -m pytest -m e2e tests/e2e`. A requirements walkthrough that checks what the screen shows against counts read
+straight from the database (feed totals, filters, CSV, hotels, data health, phone width) is
+`python scripts/browser_audit.py` (screenshots go to `data/audit_shots/`).
 
 ### Keeping it up to date
 
 | When | Command | What it does |
 |---|---|---|
-| Daily | `python -m scraper.run --property all --mode incremental` | Reads newest reviews first and stops at the first page with nothing new. Usually 1 page per hotel (about 20 to 30 s each). |
+| Daily | `python -m scraper.run --property all --mode incremental` | Reads newest reviews first and stops at the first page with nothing new. Usually 1 page per hotel; the time per hotel (a browser start, the bot check, one page) has not been measured live, so expect tens of seconds. |
 | Weekly | `python -m scraper.run --property all --mode full` | Re-reads newest first until the 365-day window or the page limit ends the run (see below). Picks up edited reviews and new hotel replies inside that range. It only flags reviews that disappeared and checks the count against what Booking.com reports when the run reaches the end of the list, which the default window normally prevents; add `--no-date-window` for that (slower). |
 | After either | `python -m insights.pipeline --db data/reviews.db` | Tags only new or changed reviews. Safe to run repeatedly. |
 
@@ -139,7 +146,7 @@ on the live page. Details and the reasoning are in `docs/adr/001-collection-meth
 
 | Risk | Control |
 |---|---|
-| Duplicates | Booking.com's review ID is the primary key. Re-running changes nothing (test `test_saving_the_same_reviews_twice_creates_no_duplicates`; a live repeat run is not recorded in this repository). |
+| Duplicates | Booking.com's review ID is the primary key. Re-running changes nothing: test `test_saving_the_same_reviews_twice_creates_no_duplicates`, and a live repeat full run of Olympic Paddington is on record in the run ledger (run 3: 14 pages read, 0 new reviews stored). |
 | Edited reviews, new hotel replies | Content hash per review. A changed hash updates the row, keeps `first_seen`, and counts as `updated`. |
 | Layout or API change | Parser raises `ParseError("layout probably changed")` instead of returning "no reviews". The run is recorded as `failed` with that message. |
 | One bad review | Fails validation (rating outside 1 to 10, bad date, missing ID): goes to a `quarantine` table with the reason. The rest of the page is kept. |
@@ -196,8 +203,9 @@ trade-offs: `docs/adr/002-page-cap.md`.
 
 ### Known limitations of collection
 
-- **Central Sydney was not collected** (blocked twice, then skipped on purpose). Booking.com throttling is the likely cause
-  but is unproven: the page loaded normally when opened alone later. Potts Point and Darling Harbour are partial, as above.
+- **Central Sydney was not collected** (blocked, then skipped on purpose). The cause is unknown: throttling was the first
+  guess, but another hotel ran unblocked a fraction of a second later, and the page loaded normally when opened alone later
+  (ADR 004). Potts Point and Darling Harbour are partial, as above.
   A claim like "the average for Darling Harbour" therefore covers its newest 2,010 reviews only.
 - **A visible browser window is required.** Headless Chromium receives HTTP 400 "Request not supported"
   from the review endpoint (observed during development). We did not try to disguise headless mode.

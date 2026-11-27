@@ -917,7 +917,7 @@ def test_pipeline_is_idempotent_and_never_duplicates_tags(tmp_path):
 def test_pipeline_caps_stored_evidence_and_survives_non_text_cells(tmp_path):
     from insights.classify import MAX_EVIDENCE_CHARS
     from insights.pipeline import classify_all
-    rows = [("big", "p", 5.0, "2026-11-01", None, "dirty " + "word " * 1_000_000, "h1", "t", "t"),
+    rows = [("big", "p", 5.0, "2026-11-01", None, "the room was dirty " + "word " * 1_000_000, "h1", "t", "t"),
             ("int", "p", 5.0, "2026-11-01", 12345, 3.14, "h2", "t", "t"),
             ("blob", "p", 5.0, "2026-11-01", b"\xff\xfe dirty", b"\x00\x01noisy", "h3", "t", "t")]
     db = pipeline_db(tmp_path, rows)

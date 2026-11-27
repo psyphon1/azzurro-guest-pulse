@@ -20,3 +20,4 @@ data/*.db
 data/sample/*.db
 .DS_Store
 data/demo.db
+data/audit_shots/

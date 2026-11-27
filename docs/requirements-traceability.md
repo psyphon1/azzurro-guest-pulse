@@ -4,7 +4,7 @@ Every requirement, deliverable and evaluation criterion from the assignment, map
 shows it works, and what is still open. First written on 2026-11-27 from a fresh clone of the committed state, then
 updated the same day after the live collection, the coverage backfill and the sample export (see "How this was checked").
 
-**Headline status:** data exists for 3 of the 4 hotels. Central Sydney is not collected (blocked twice, skipped by
+**Headline status:** data exists for 3 of the 4 hotels. Central Sydney is not collected (blocked (one attempt in the ledger, a second reported), skipped by
 decision: `docs/adr/004-central-sydney-not-collected.md`). Potts Point (1,440 of 2,386) and Darling Harbour (2,010 of
 4,305) are partial and flagged as such in the ledger and on the dashboard. Olympic Hotel Paddington (133) is complete.
 
@@ -42,7 +42,7 @@ real data; not met = does not exist yet.
 
 | Requirement | Where implemented | Evidence | Status | Gap or note |
 |---|---|---|---|---|
-| Collect reviews for the 4 properties (Olympic Paddington, Potts Point, Central Sydney, Darling Harbour) | `scraper/config.py` (`PROPERTIES`), `scraper/run.py` (`--property`), `scraper/browser.py` | `test_run_cli.py` (CLI over all hotels with a fake fetcher); live data in `data/reviews.db`: Olympic Paddington 133 (complete), Potts Point 1,440 of 2,386, Darling Harbour 2,010 of 4,305 | partly met | **3 of 4 hotels.** Central Sydney: zero reviews, blocked twice, skipped by decision (ADR 004; how to collect it later is there). Potts Point: the list ended early, oldest reviews (before 2023-11-28) missing. Darling Harbour: old 200-page stop, reviews before 2025-01-31 missing. Both partial hotels predate the date-window and ledger changes; their coverage was recorded afterwards with `scripts/backfill_coverage.py`. |
+| Collect reviews for the 4 properties (Olympic Paddington, Potts Point, Central Sydney, Darling Harbour) | `scraper/config.py` (`PROPERTIES`), `scraper/run.py` (`--property`), `scraper/browser.py` | `test_run_cli.py` (CLI over all hotels with a fake fetcher); live data in `data/reviews.db`: Olympic Paddington 133 (complete), Potts Point 1,440 of 2,386, Darling Harbour 2,010 of 4,305 | partly met | **3 of 4 hotels.** Central Sydney: zero reviews, blocked (one attempt in the ledger, a second reported), skipped by decision (ADR 004; how to collect it later is there). Potts Point: the list ended early, oldest reviews (before 2023-11-28) missing. Darling Harbour: old 200-page stop, reviews before 2025-01-31 missing. Both partial hotels predate the date-window and ledger changes; their coverage was recorded afterwards with `scripts/backfill_coverage.py`. |
 | No API access (real browser instead) | `scraper/browser.py` (Playwright, reads the page's own `ReviewList` responses); `docs/adr/001-collection-method.md` | Code reading; `test_walk_pages.py` for the paging loop on saved fixtures | met | Needs a visible browser window (headless gets HTTP 400). Stated in README. Cannot be re-verified offline. |
 | Review text, rating, date, property and other fields | `scraper/models.py` (`Review`), `scraper/parse.py` | `test_parse.py` (every card parsed, liked and disliked kept apart, dates to Sydney local date, stay and guest details, hotel reply, helpful votes) | met | Fields: id, property, rating, date, title, liked, disliked, language, country, traveller type, room type, nights, stay dates, hotel reply, helpful votes. Reviewer name deliberately not stored. |
 | No duplicate reviews | `scraper/store.py` (`upsert_reviews`, review ID as primary key, content hash) | `test_saving_the_same_reviews_twice_creates_no_duplicates`, `test_edited_review_is_updated_not_duplicated_and_keeps_first_seen` | met | A live repeat run is not recorded anywhere in the repo (the README no longer claims it). Cross-hotel ID collisions are refused (`test_security_scraper.py`). |
@@ -103,7 +103,7 @@ real data; not met = does not exist yet.
 
 ## Top 5 risks to the submission, ranked by impact
 
-1. **The data covers 3 of 4 hotels, and two of those are partial.** Central Sydney has no reviews (blocked twice, skipped
+1. **The data covers 3 of 4 hotels, and two of those are partial.** Central Sydney has no reviews (blocked (one attempt in the ledger, a second reported), skipped
    by decision, ADR 004). Potts Point has 1,440 of 2,386 reported reviews (list ended early, oldest missing) and Darling
    Harbour 2,010 of 4,305 (old 200-page stop, reviews before 2025-01-31 missing). The gaps are recorded in the ledger and
    explained on the dashboard, but a reviewer will still see one hotel without numbers. Collecting Central Sydney needs a

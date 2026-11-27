@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from insights.language import is_english_like
 from scraper.config import BY_SLUG
 
 POSITIVE_FROM = 8.0
@@ -325,10 +326,6 @@ def _has_text(d: pd.DataFrame, polarity: str) -> pd.Series:
     return d[col].map(lambda v: isinstance(v, str) and v.strip() != "").astype(bool)
 
 
-def _is_non_english(lang) -> bool:
-    return isinstance(lang, str) and lang.strip() != "" and not lang.strip().lower().startswith("en")
-
-
 @dataclass(frozen=True)
 class CommentCounts:
     n_band_total: int        # all reviews in the sentiment band (rating-only ones included)
@@ -351,10 +348,17 @@ def _tagged(df, topics, start, end, polarity, properties=None):
     return band_rows, text_rows, tags[tags["review_key"].isin(text_rows["review_key"])]
 
 
+def _col(d: pd.DataFrame, name: str):
+    return d[name] if name in d.columns else [None] * len(d)
+
+
 def comment_counts(df, start, end, polarity="negative", properties=None) -> CommentCounts:
     band_rows, text_rows, _ = _tagged(df, None, start, end, polarity, properties)
+    # Same rule as the pipeline (insights.language), so this count equals the reviews the pipeline left untagged.
     if "language" in text_rows.columns:
-        non_en = sum(1 for v in text_rows["language"] if _is_non_english(v))
+        non_en = sum(1 for lang, liked, disliked in zip(
+            text_rows["language"], _col(text_rows, "liked"), _col(text_rows, "disliked"))
+            if not is_english_like(lang, liked, disliked))
     else:
         non_en = 0
     return CommentCounts(len(band_rows), len(text_rows), len(band_rows) - len(text_rows), non_en)
@@ -412,6 +416,56 @@ def unreplied_reviews(df, properties=None, max_age_days=None, band=None, as_of=N
         ref = pd.Timestamp(_as_date(as_of)) if as_of is not None else _prepare(df)["review_date"].max()
         d = d[d["review_date"] >= ref - pd.Timedelta(days=max_age_days)]
     return d.sort_values("review_date", ascending=False, kind="stable").reset_index(drop=True)
+
+
+# ---------------------------------------------------------------------------- repeated reviews
+REPEATED_COLUMNS = ["property", "property_name", "rating", "n", "first_date", "last_date", "sample_text"]
+_SAMPLE_CHARS = 120
+_WHITESPACE = re.compile(r"\s+")
+
+
+def _collapsed(*parts) -> str:
+    joined = " ".join(p for p in parts if isinstance(p, str))
+    return _WHITESPACE.sub(" ", joined).strip()
+
+
+def repeated_reviews(df: pd.DataFrame, min_group: int = 5) -> pd.DataFrame:
+    """Groups of at least ``min_group`` reviews of one property with the same rating and the same written text.
+
+    Disclosure only: nothing is removed or down-weighted anywhere. Same review text posted many times under
+    different review keys can be a copy-paste campaign or a repeated submission, and a reader should know.
+    The text is the liked + disliked comment, lower-cased and whitespace-collapsed; a title is used only when
+    the review has no comment at all (reviewers who repeat a text often vary the title). Reviews with no text
+    never form a group. Sorted by size, largest first.
+    """
+    empty = pd.DataFrame(columns=REPEATED_COLUMNS)
+    if df is None or len(df) == 0 or "property" not in df.columns or "rating" not in df.columns:
+        return empty
+    n = len(df)
+    liked = df["liked"] if "liked" in df.columns else [None] * n
+    disliked = df["disliked"] if "disliked" in df.columns else [None] * n
+    title = df["title"] if "title" in df.columns else [None] * n
+    dates = (pd.to_datetime(df["review_date"], errors="coerce") if "review_date" in df.columns
+             else pd.Series(pd.NaT, index=df.index))
+    texts = []
+    for lk, dl, ti in zip(liked, disliked, title):
+        texts.append(_collapsed(lk, dl) or _collapsed(ti))
+    d = pd.DataFrame({"property": df["property"].to_numpy(),
+                      "rating": pd.to_numeric(df["rating"], errors="coerce").to_numpy(),
+                      "date": dates.to_numpy(), "shown": texts, "text": [t.lower() for t in texts]})
+    d = d[(d["text"] != "") & d["rating"].notna() & d["property"].notna()]
+    if d.empty:
+        return empty
+    rows = []
+    for (prop, rating, text), g in d.groupby(["property", "rating", "text"], sort=False):
+        if len(g) >= min_group:
+            rows.append({"property": prop, "property_name": _name(prop), "rating": rating, "n": len(g),
+                         "first_date": g["date"].min(), "last_date": g["date"].max(),
+                         "sample_text": g["shown"].iloc[0][:_SAMPLE_CHARS]})
+    if not rows:
+        return empty
+    out = pd.DataFrame(rows, columns=REPEATED_COLUMNS)
+    return out.sort_values("n", ascending=False, kind="stable").reset_index(drop=True)
 
 
 # ---------------------------------------------------------------------------- data health
@@ -509,6 +563,7 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
 
 # ---------------------------------------------------------------------------- insights
 MAX_INSIGHTS = 6
+UNREPLIED_WINDOW_DAYS = 90   # the unreplied-negatives alert counts only this many days back from the end of the week
 _SCORE_MOVE = 0.3            # portfolio average must move this much to be called out as good/bad
 _PROPERTY_MOVE = 0.5         # same for a single property (noisier, so a higher bar)
 _SPIKE_MIN_COUNT = 3         # a property+topic spike needs this many negative mentions this week...
@@ -637,13 +692,15 @@ def _spike_insights(df, topics, ws):
 
 def _unreplied_insight(df, ws):
     end = pd.Timestamp(ws + timedelta(days=6))
-    u = unreplied_reviews(df, band="negative")
+    # Only recent reviews: an all-time backlog (back to 2023) is not something anyone can act on this week.
+    u = unreplied_reviews(df, band="negative", max_age_days=UNREPLIED_WINDOW_DAYS, as_of=end.date())
     u = u[u["review_date"] <= end]
     if len(u) == 0:
         return None
     total, this_week = len(u), int((u["review_date"] >= pd.Timestamp(ws)).sum())
     verb = "has" if total == 1 else "have"
-    text = f"{_count(total, 'negative review')} {verb} no hotel reply yet ({this_week} of them from this week)."
+    text = (f"{_count(total, 'negative review')} in the last {UNREPLIED_WINDOW_DAYS} days {verb} no hotel reply yet "
+            f"({this_week} of them from this week).")
     by_prop = u.groupby("property_name").size().sort_values(ascending=False)
     if len(by_prop) > 1 and by_prop.iloc[0] > by_prop.iloc[1]:
         text += f" {by_prop.index[0]} has the most ({int(by_prop.iloc[0])})."
