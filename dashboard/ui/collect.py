@@ -108,7 +108,7 @@ def stop() -> bool:
 def new_keys() -> set[str]:
     """Review keys added by the last finished fetch (empty when it found nothing or never ran)."""
     data = status()
-    if data.get("state") != "done":
+    if data.get("state") not in ("done", "stopped"):
         return set()
     return {k for k in data.get("new_keys", []) if isinstance(k, str)}
 

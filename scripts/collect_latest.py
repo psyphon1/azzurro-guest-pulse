@@ -59,20 +59,25 @@ def main(argv: list[str] | None = None) -> int:
         _write_status(state="collecting", started_at=started)
         print(f"[{time.strftime('%H:%M:%S')}] collecting new reviews (incremental, all hotels)", flush=True)
         code = 0
-        for i, prop in enumerate(PROPERTIES):
-            if i:   # same courtesy pause as scraper.run between hotels
-                wait = random.uniform(PAUSE_S, PAUSE_S * 2)
-                print(f"Waiting {wait:.0f}s before the next hotel ...", flush=True)
-                time.sleep(wait)
-            # One fresh process per hotel: each browser starts clean, whatever happened to the previous one.
-            # Only the latest reviews: a hotel we already have stops at the first review it already stored (and never
-            # reads more than MAX_PAGES); a hotel with nothing stored yet gets just the newest page, not a year back.
-            stored = sum(1 for p in before.values() if p == prop.slug)
-            pages = MAX_PAGES if stored else FIRST_FETCH_PAGES
-            rc = subprocess.run([sys.executable, "-m", "scraper.run", "--property", prop.slug, "--mode", "incremental",
-                                 "--max-pages", str(pages), "--hidden-window", "--db", args.db],
-                                cwd=str(ROOT)).returncode
-            code = code or rc
+        stopped = False
+        try:
+            for i, prop in enumerate(PROPERTIES):
+                if i:   # same courtesy pause as scraper.run between hotels
+                    wait = random.uniform(PAUSE_S, PAUSE_S * 2)
+                    print(f"Waiting {wait:.0f}s before the next hotel ...", flush=True)
+                    time.sleep(wait)
+                # One fresh process per hotel: each browser starts clean, whatever happened to the previous one.
+                # Only the latest reviews: a hotel we already have stops at the first review it already stored (and never
+                # reads more than MAX_PAGES); a hotel with nothing stored yet gets just the newest page, not a year back.
+                stored = sum(1 for p in before.values() if p == prop.slug)
+                pages = MAX_PAGES if stored else FIRST_FETCH_PAGES
+                rc = subprocess.run([sys.executable, "-m", "scraper.run", "--property", prop.slug, "--mode", "incremental",
+                                     "--max-pages", str(pages), "--hidden-window", "--db", args.db],
+                                    cwd=str(ROOT)).returncode
+                code = code or rc
+        except KeyboardInterrupt:      # Stop button: skip the remaining hotels, but keep and show what arrived
+            stopped = True
+            print(f"[{time.strftime('%H:%M:%S')}] stopped by the user; saving what was already fetched", flush=True)
         _write_status(state="tagging", started_at=started, collect_exit=code)
         print(f"[{time.strftime('%H:%M:%S')}] tagging topics", flush=True)
         tag_main(["--db", args.db])
@@ -81,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         per_hotel: dict[str, int] = {}
         for k in new:
             per_hotel[after[k]] = per_hotel.get(after[k], 0) + 1
-        _write_status(state="done", started_at=started, collect_exit=code,
+        _write_status(state="stopped" if stopped else "done", started_at=started, collect_exit=code,
                       finished_at=datetime.now(timezone.utc).isoformat(),
                       new_count=len(new), new_keys=new[:2000], new_by_hotel=per_hotel)
         print(f"[{time.strftime('%H:%M:%S')}] done: {len(new)} new reviews {per_hotel} "

@@ -142,7 +142,7 @@ def _fetch_progress() -> None:
         return
     st.session_state["fetch_watching"] = False
     last = collect.status()
-    n = int(last.get("new_count", 0) or 0) if last.get("state") == "done" else 0
+    n = int(last.get("new_count", 0) or 0) if last.get("state") in ("done", "stopped") else 0
     st.session_state["fetch_result"] = n
     if n:                       # show the new reviews in the feed below, and go there
         st.session_state["feed_new_only"] = True
@@ -169,16 +169,15 @@ def render_fetch(db_path: Path) -> None:
         return
     last = collect.status()
     result = st.session_state.pop("fetch_result", None)
-    if result is not None and last.get("state") == "done":
+    if result is not None and last.get("state") in ("done", "stopped"):
+        stopped = "Stopped. " if last.get("state") == "stopped" else ""
         if result:
-            st.success(f"{result} new review{'s' if result != 1 else ''} added. They are shown in the feed below.")
+            st.success(f"{stopped}{result} new review{'s' if result != 1 else ''} added. They are at the top of the feed below.")
         else:
-            st.info("No new reviews since the last fetch.")
-    if last.get("state") == "done" and last.get("finished_at"):
+            st.info(f"{stopped}No new reviews since the last fetch.")
+    if last.get("state") in ("done", "stopped") and last.get("finished_at"):
         n = int(last.get("new_count", 0) or 0)
         st.caption(f"Last fetch {esc(D.to_sydney(last['finished_at']))}: {n} new review{'s' if n != 1 else ''}.")
-    elif last.get("state") == "stopped":
-        st.caption("Last fetch was stopped; the reviews it had already found were kept.")
     elif last.get("state") == "failed":
         st.caption(f"Last fetch failed: {esc(last.get('error', ''))}")
 
