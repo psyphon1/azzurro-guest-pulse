@@ -3,7 +3,7 @@ import urllib.request
 
 from tests.e2e.harness import exception_boxes, main_text
 
-EXPECTED_HEADINGS = ["Filters", "Azzurro Hotels: guest review insights", "This week at a glance", "Guest score",
+EXPECTED_HEADINGS = ["Filters", "Azzurro Hotels: guest review insights", "Week of 16 Nov at a glance", "Worth a look",
                      "How each hotel is doing", "Trends", "What guests talk about", "Review feed", "Data health"]
 
 

@@ -93,7 +93,7 @@ def test_banner_names_empty_and_partial_hotels(monkeypatch, db):
 def test_portfolio_numbers_say_how_many_hotels(monkeypatch, db):
     text = page_text(run_app(monkeypatch, db))
     assert "Based on 3 of 4 hotels" in text
-    assert text.count("Based on 3 of 4 hotels") >= 2         # insights block and score cards
+    assert text.count("Based on 3 of 4 hotels") == 1         # said once, under the week heading
 
 
 def test_only_the_empty_hotel_selected_gives_friendly_state(monkeypatch, db):

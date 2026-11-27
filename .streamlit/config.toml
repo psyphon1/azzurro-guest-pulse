@@ -24,3 +24,11 @@ enforceSerializableSessionState = true
 
 [logger]
 level = "warning"
+
+[theme]
+base = "light"
+primaryColor = "#1C6DB5"            # azure: selected hotels, toggles, focus
+backgroundColor = "#F3F6F8"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#13252F"
+font = "sans serif"

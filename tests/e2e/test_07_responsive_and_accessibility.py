@@ -21,7 +21,7 @@ def test_no_horizontal_scrolling_at_any_screen_size(open_app, main_server, name,
 @pytest.mark.parametrize("name,w,h", VIEWPORTS)
 def test_the_key_content_is_visible_at_every_size(open_app, main_server, name, w, h):
     page, _ = open_app(main_server, viewport={"width": w, "height": h})
-    for heading in ("This week at a glance", "Guest score", "How each hotel is doing", "Trends", "Review feed"):
+    for heading in ("Week of 16 Nov at a glance", "Worth a look", "How each hotel is doing", "Trends", "Review feed"):
         el = page.get_by_role("heading", name=heading).first
         el.scroll_into_view_if_needed()
         assert el.is_visible(), f"{name}: {heading!r} not visible"

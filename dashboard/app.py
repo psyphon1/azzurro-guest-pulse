@@ -18,10 +18,10 @@ import streamlit as st  # noqa: E402
 from dashboard.ui import data as D  # noqa: E402
 from dashboard.ui.style import CSS, esc  # noqa: E402
 
-st.set_page_config(page_title="Azzurro Review Insights", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Azzurro Review Insights", layout="wide", initial_sidebar_state="auto")
 st.markdown(CSS, unsafe_allow_html=True)
 st.title("Azzurro Hotels: guest review insights")
-st.markdown('<div class="az-sub">A weekly view of what guests say on Booking.com, built for Monday-morning reviews.</div>',
+st.markdown('<div class="az-sub">What guests said on Booking.com, week by week.</div>',
             unsafe_allow_html=True)
 
 log = logging.getLogger("azzurro.dashboard")
@@ -152,17 +152,13 @@ def render_dashboard(db_path, bundle) -> None:
     if breakdown is not None and not breakdown.empty:
         breakdown = breakdown[breakdown["property"].isin(sel_slugs)]
     coverage = S.coverage_text(list(zip(sel_slugs, sel_names)), breakdown, no_data, lab.in_week)
-    S.render_insights(m.generate_insights(df, topics, focus), week_label, coverage, lab)
-
-    st.header("Guest score")
+    S.render_week_header(week_label, coverage, lab)
     if start < focus or end > focus + timedelta(days=6):
-        st.caption(f"The score cards and hotel cards describe the week of {week_label}. Trends, topics and the review feed cover {D.nice_range(start, end)}.")
-    elif not lab.current:
-        st.caption(f"The score cards and hotel cards describe the week of {week_label}. It is a finished week, not the week in progress.")
-    st.caption(coverage)
+        st.caption(f"Trends, topics and the review feed further down cover {D.nice_range(start, end)}.")
     S.render_kpis(m.compare_weeks(df, focus), lab)
     if not lab.current:
         S.render_week_so_far(m.week_summary(df, D.monday_of(today)), m.week_summary(df, focus), today, focus)
+    S.render_insights(m.generate_insights(df, topics, focus), week_label, coverage, lab)
 
     top_complaint: dict = {}
     if topics_ready and breakdown is not None:

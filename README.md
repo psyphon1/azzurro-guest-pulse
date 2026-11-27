@@ -70,7 +70,7 @@ exist yet, the dashboard says so and shows these same commands instead of failin
 Run the tests: `python -m pytest -q` (no network needed; about 1,030 tests, around 40 seconds).
 
 Browser tests (real Chromium driving the real dashboard, watching the console, network and server log):
-`python -m pytest -m e2e tests/e2e`. A requirements walkthrough that checks what the screen shows against counts read
+`python -m pytest -m e2e tests/e2e -n 4` (about 90 seconds with 4 workers). A requirements walkthrough that checks what the screen shows against counts read
 straight from the database (feed totals, filters, CSV, hotels, data health, phone width) is
 `python scripts/browser_audit.py` (screenshots go to `data/audit_shots/`).
 

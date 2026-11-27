@@ -9,7 +9,7 @@ from tests.e2e.harness import choose, main_text, settle, tick
 def test_score_cards_show_current_week_previous_week_and_change(open_app, main_server):
     page, mon = open_app(main_server)
     text = main_text(page)
-    for label in ("Guest score this week", "Previous week", "Change vs previous week", "Reviews this week", "Positive vs negative"):
+    for label in (r"Guest score, week of", r"Previous week \(", "Change vs previous week", r"Reviews, week of", "Positive vs negative"):
         assert re.search(label, text, re.IGNORECASE), label
     scores = [float(x) for x in re.findall(r"(\d+(?:\.\d)?)\s*/\s*10", text)]
     assert scores and all(1 <= s <= 10 for s in scores)
@@ -34,13 +34,15 @@ def test_the_banner_is_honest_about_missing_and_partial_data(open_app, main_serv
     assert "Check the data before you rely on it" in text
     assert re.search(r"Central Sydney: no reviews collected yet", text)
     assert "Not every review is included" in text
+    page.get_by_text("Details: what is missing and why").click()
+    text = main_text(page)
     assert re.search(r"Potts Point: only part of the history", text) and re.search(r"Darling Harbour: only part of the history", text)
-    assert text.count("Based on 3 of 4 hotels") >= 2              # insights and score both say how many hotels they cover
+    assert text.count("Based on 3 of 4 hotels") == 1              # said once, under the week heading
 
 
 def test_insights_are_plain_sentences_with_counts_next_to_every_percentage(open_app, main_server):
     page, _ = open_app(main_server)
-    text = main_text(page).split("This week at a glance")[1].split("Guest score")[0]
+    text = main_text(page).split("Worth a look")[1].split("How each hotel is doing")[0]
     assert re.search(r"needs attention|for your info|good news", text, re.IGNORECASE)
     for sentence in re.findall(r"[^.]*\d+%[^.]*\.", text):
         assert re.search(r"\d+ of \d+|\(\d+ of \d+", sentence), f"a percentage without its count: {sentence!r}"

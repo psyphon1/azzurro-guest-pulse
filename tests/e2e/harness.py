@@ -188,8 +188,17 @@ def sidebar(page):
 
 def choose(page, label: str, option: str) -> None:
     """Pick an option in a Streamlit selectbox by its visible label."""
-    page.get_by_role("combobox", name=label).click()
-    page.get_by_role("option", name=option, exact=True).click()
+    box = page.get_by_role("combobox", name=label)
+    for attempt in range(3):     # the list can re-render while it opens; retry instead of failing on a moving target
+        try:
+            box.click()
+            page.get_by_role("option", name=option, exact=True).click(timeout=5000)
+            break
+        except Exception:
+            page.keyboard.press("Escape")
+            if attempt == 2:
+                raise
+            settle(page)
     settle(page)
 
 
