@@ -8,7 +8,7 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 
-from insights.classify import classify_review
+from insights.classify import CLASSIFIER_REVISION, MAX_TEXT_CHARS, classify_review
 from insights.topics import TAXONOMY_VERSION
 
 SCHEMA = """
@@ -43,16 +43,19 @@ def classify_all(db_path: str) -> ClassifyResult:
     if db_path != ":memory:" and not os.path.exists(db_path):
         raise FileNotFoundError(f"Database not found: {db_path}")
     version = TAXONOMY_VERSION
-    db = sqlite3.connect(db_path)
+    state_version = f"{version}+{CLASSIFIER_REVISION}"   # what the 'done' memory compares; review_topics keeps `version`
+    db = sqlite3.connect(db_path, timeout=30)
     try:
         db.executescript(SCHEMA)
         done = {k: (h, v) for k, h, v in db.execute(
             "SELECT review_key, content_hash, taxonomy_version FROM review_topics_state")}
         seen = classified = skipped = written = 0
-        rows = db.execute("SELECT review_key, liked, disliked, content_hash FROM reviews").fetchall()
+        # substr(): the classifier reads at most MAX_TEXT_CHARS, so a 5 MB review is never pulled into memory whole.
+        rows = db.execute("SELECT review_key, substr(liked, 1, ?), substr(disliked, 1, ?), content_hash FROM reviews",
+                          (MAX_TEXT_CHARS * 2, MAX_TEXT_CHARS * 2)).fetchall()
         for key, liked, disliked, content_hash in rows:
             seen += 1
-            if done.get(key) == (content_hash, version):
+            if done.get(key) == (content_hash, state_version):
                 skipped += 1
                 continue
             tags = classify_review(liked, disliked)
@@ -66,7 +69,7 @@ def classify_all(db_path: str) -> ClassifyResult:
                 "INSERT INTO review_topics_state (review_key, content_hash, taxonomy_version) VALUES (?,?,?)"
                 " ON CONFLICT(review_key) DO UPDATE SET content_hash=excluded.content_hash,"
                 " taxonomy_version=excluded.taxonomy_version",
-                (key, content_hash, version),
+                (key, content_hash, state_version),
             )
             classified += 1
             written += len(tags)
@@ -84,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
         r = classify_all(args.db)
     except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
+        return 1
+    except sqlite3.Error as exc:     # a directory, a damaged file, something that is not SQLite, or a locked database
+        print(f"Could not classify {args.db}: not a usable SQLite review database ({type(exc).__name__}).",
+              file=sys.stderr)
         return 1
     print(f"{r.reviews_seen} reviews seen, {r.reviews_classified} classified, "
           f"{r.reviews_skipped} skipped, {r.tags_written} tags written")

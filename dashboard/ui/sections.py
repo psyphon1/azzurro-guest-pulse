@@ -11,7 +11,8 @@ from plotly.subplots import make_subplots
 
 from insights import metrics as m
 from dashboard.ui import data as D
-from dashboard.ui.style import (BAD, GOOD, INK, LINE, MUTED, TEAL, WARN, badge, esc, one_line)
+from dashboard.ui.privacy import mask_pii
+from dashboard.ui.style import (BAD, GOOD, INK, LINE, MUTED, TEAL, WARN, badge, clean_text, esc, one_line, plain_text)
 
 PAGE_SIZE = 10
 POS_COL, MIX_COL, NEG_COL = GOOD, "#D9A027", BAD
@@ -101,6 +102,12 @@ def render_banner(db_path: Path, health: pd.DataFrame) -> None:
         html(f'<div class="az-fresh"><b>&#8505; Not every review is included.</b> To keep collection fast and polite we only '
              f'read the newest reviews first. Recent weeks are complete; long-term history is not.'
              f'<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
+
+
+def render_skipped(n: int) -> None:
+    if n:
+        st.caption(f"{n:,} stored review{'s were' if n != 1 else ' was'} skipped because the date or score could not "
+                   "be trusted (unreadable, from the future, or outside 1 to 10). They are not counted anywhere.")
 
 
 # 2. Insights --------------------------------------------------------------------------------
@@ -244,7 +251,7 @@ def render_topics(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date
     st.header("What guests talk about")
     if not topics_ready:
         st.info("Topic analysis has not been run yet. Once it has, you will see which issues come up most. "
-                f"(For the technical team: python -m insights.pipeline --db {db_path})")
+                f"(For the technical team: python -m insights.pipeline --db data/{esc(db_path.name)})")
         return
     view = st.radio("Show", ["Complaints", "Praise"], horizontal=True, key="topic_view",
                     help="Complaints are topics found in what guests disliked. Praise is what they liked.")
@@ -297,9 +304,14 @@ def _band_class(band: str) -> tuple[str, str]:
     return {"positive": ("good", "Positive"), "mixed": ("warn", "Mixed"), "negative": ("bad", "Negative")}[band]
 
 
+def guest_text(value) -> str:
+    """Guest-written text, ready for our HTML: hidden characters out, email addresses and phone numbers masked, escaped."""
+    return esc(mask_pii(clean_text(value)))
+
+
 def review_card(r, chips: list, labels: dict[str, str]) -> str:
     cls, word = _band_class(r.band)
-    meta = " &middot; ".join(esc(x) for x in (r.room_type, r.traveller_type, r.reviewer_country) if x and not pd.isna(x))
+    meta = " &middot; ".join(guest_text(x) for x in (r.room_type, r.traveller_type, r.reviewer_country) if x and not pd.isna(x))
     liked = r.liked if r.liked and not pd.isna(r.liked) and str(r.liked).strip() else None
     disliked = r.disliked if r.disliked and not pd.isna(r.disliked) and str(r.disliked).strip() else None
     parts = [f'<div class="az-review"><div class="head"><span class="az-score {cls}">{r.rating:g}/10 &middot; {word}</span>'
@@ -310,20 +322,20 @@ def review_card(r, chips: list, labels: dict[str, str]) -> str:
         parts.append('<div class="az-note"><i>Rating only, no written comment.</i></div>')
     else:
         if r.title and not pd.isna(r.title):
-            parts.append(f'<div><b>{esc(r.title)}</b></div>')
+            parts.append(f'<div><b>{guest_text(r.title)}</b></div>')
         if liked:
-            parts.append(f'<div class="az-liked"><div class="h">&#10003; What guests liked</div>{esc(liked)}</div>')
+            parts.append(f'<div class="az-liked"><div class="h">&#10003; What guests liked</div>{guest_text(liked)}</div>')
         if disliked:
-            parts.append(f'<div class="az-disliked"><div class="h">&#10007; What guests disliked</div>{esc(disliked)}</div>')
+            parts.append(f'<div class="az-disliked"><div class="h">&#10007; What guests disliked</div>{guest_text(disliked)}</div>')
     if r.has_reply:
-        parts.append(f'<div class="az-reply"><div class="h">Hotel reply</div>{esc(r.host_reply)}</div>')
+        parts.append(f'<div class="az-reply"><div class="h">Hotel reply</div>{guest_text(r.host_reply)}</div>')
     else:
         parts.append("<div style='margin-top:.4rem'>" + badge("No reply yet", "warn", "The hotel has not replied to this review.") + "</div>")
     if chips:
         parts.append("<div>")
         for tid, pol, ev in chips:
             kind, prefix = ("neg", "Complaint") if pol == "negative" else ("pos", "Praise")
-            parts.append(f'<span class="az-chip {kind}" title="{esc(ev)}">{prefix}: {esc(labels.get(tid, tid))}</span>')
+            parts.append(f'<span class="az-chip {kind}" title="{guest_text(ev)}">{prefix}: {esc(labels.get(tid, tid))}</span>')
         parts.append("</div>")
     parts.append("</div>")
     return "".join(parts)
@@ -343,7 +355,8 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
         topic_choice = st.selectbox("Topic", list(topic_opts), format_func=topic_opts.get, key="feed_topic",
                                     disabled=not topics_ready,
                                     help=None if topics_ready else "Available once topic analysis has been run.")
-        search = st.text_input("Search the text", key="feed_search", placeholder="e.g. lift, wifi, breakfast")
+        search = st.text_input("Search the text", key="feed_search", placeholder="e.g. lift, wifi, breakfast",
+                               max_chars=D.MAX_SEARCH_CHARS)
     with c2:
         only_negative = st.checkbox("Only negative reviews", key="feed_neg", help=f"Score under {m.NEGATIVE_BELOW:g}.")
         no_reply = st.checkbox("No reply yet", key="feed_noreply")
@@ -362,7 +375,7 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
         st.session_state["feed_sig"] = sig
         st.session_state["feed_page"] = 1
     pages = max(1, -(-total // PAGE_SIZE))
-    page = min(max(1, st.session_state.get("feed_page", 1)), pages)
+    page = D.clamp_page(st.session_state.get("feed_page", 1), pages)
     st.session_state["feed_page"] = page
 
     if total == 0:
@@ -374,7 +387,7 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
         html(review_card(r, chips.get(r.review_key, []), labels))
 
     def go_to(delta: int) -> None:
-        st.session_state["feed_page"] = st.session_state["feed_page"] + delta
+        st.session_state["feed_page"] = D.clamp_page(st.session_state.get("feed_page", 1), 10**9) + delta
 
     b1, b2, b3 = st.columns([1, 1, 3])
     b1.button("Previous page", disabled=page <= 1, on_click=go_to, args=(-1,), key="feed_prev")
@@ -399,11 +412,15 @@ def render_health(health: pd.DataFrame, feed_df: pd.DataFrame | None, chips: dic
             "Latest attempt": [_STATUS_WORDS.get(s, "Never run") if s else "Never run" for s in health["latest_status"]],
             "Up to date?": ["No: over 48 hours old" if s else "Yes" for s in health["stale"].astype(bool)],
             "Coverage": [c if isinstance(c, str) and c else "All reviews Booking.com shows" for c in health["coverage_note"]],
-            "Problem details": [e if isinstance(e, str) and e else "" for e in health["latest_error"]],
+            "Problem details": [plain_text(e) if isinstance(e, str) and e else "" for e in health["latest_error"]],
         })
         st.dataframe(t, hide_index=True, use_container_width=True)
     if feed_df is not None and len(feed_df):
-        st.download_button("Download these reviews as CSV", D.feed_to_csv(feed_df, chips, labels),
+        data, shown = D.feed_to_csv_limited(feed_df, chips, labels)
+        if shown < len(feed_df):
+            st.warning(f"The download holds only the first {shown:,} of {len(feed_df):,} reviews (newest first). "
+                       "Narrow the dates, hotels or filters to get the rest.")
+        st.download_button("Download these reviews as CSV", data,
                            file_name="azzurro_reviews.csv", mime="text/csv", key="csv_download",
                            help="Includes the date range, hotels and feed filters currently selected. Opens in Excel.")
     else:
@@ -433,5 +450,10 @@ Every percentage is shown with its count, for example "2 of 5".
 quick guide, not a perfect read: open the review feed to check the actual words. Reviews where the guest left only a score
 cannot be sorted into topics, so topic counts say "of N reviews with a comment". Topic key words are mainly English, so reviews in
 other languages may get fewer topic tags.
+
+**Privacy.** Reviewer names are never stored, and neither are photos. Guests sometimes type an email address or phone number into
+their review text: these are hidden before anything is shown or downloaded (an email appears as `j***@***.com`, a phone number as
+"[phone removed]"). The filter is a best effort, so please do not copy review text into other systems without reading it first.
+Review text is shown as plain text only: links and formatting in a review never work.
 """
         )

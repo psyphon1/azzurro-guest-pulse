@@ -1,0 +1,26 @@
+# Hardening for the review dashboard. Streamlit reads this file from the folder you START it in,
+# so run `streamlit run dashboard/app.py` from the project root (see docs/security/dashboard.md).
+
+[server]
+enableXsrfProtection = true       # state-changing requests need the per-session token
+enableCORS = true                 # only same-origin pages may talk to the server
+headless = true                   # never try to open a browser or ask for an email address
+runOnSave = false                 # no automatic re-run when files change on a server
+fileWatcherType = "none"          # not needed in production, and one less thing reading the disk
+enableStaticServing = false       # do not serve files out of an ./app/static folder
+maxMessageSize = 50               # MB: bounds what one page update may weigh
+
+[browser]
+gatherUsageStats = false          # no telemetry leaves the machine
+
+[client]
+toolbarMode = "viewer"            # staff see no Deploy button, no developer menu
+showErrorDetails = "none"         # a visitor never sees a stack trace or a file path
+showSidebarNavigation = false     # single page: no page list to expose
+
+[runner]
+magicEnabled = false              # a bare variable on its own line is never rendered to the page
+enforceSerializableSessionState = true
+
+[logger]
+level = "warning"

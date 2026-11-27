@@ -5,6 +5,7 @@ identified by its Monday date. ``review_date`` in the database is already Sydney
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -53,7 +54,9 @@ def latest_complete_week(df, today: date | None = None) -> date | None:
     """
     if df is None or len(df) == 0:
         return None
-    dates = pd.to_datetime(df["review_date"]).dt.date
+    dates = pd.to_datetime(df["review_date"], errors="coerce").dropna().dt.date
+    if len(dates) == 0:
+        return None
     newest = max(dates)
     ref = _as_date(today) if today is not None else newest
     weeks = {week_start_of(d) for d in dates}
@@ -83,7 +86,9 @@ def _prepare(df: pd.DataFrame) -> pd.DataFrame:
     for col in ("review_key", "property", "rating", "review_date", "host_reply"):
         if col not in out.columns:
             out[col] = pd.Series(dtype="object")
-    out["review_date"] = pd.to_datetime(out["review_date"], errors="coerce")
+    dates = pd.to_datetime(out["review_date"], errors="coerce")
+    # A date nobody could have written (year 1, year 9999) is treated as unknown rather than overflowing later.
+    out["review_date"] = dates.where((dates >= pd.Timestamp("1900-01-01")) & (dates <= pd.Timestamp("2200-01-01")))
     out["rating"] = pd.to_numeric(out["rating"], errors="coerce")
     if "week_start" not in out.columns:
         out["week_start"] = [
@@ -95,24 +100,44 @@ def _prepare(df: pd.DataFrame) -> pd.DataFrame:
         out["has_reply"] = out["host_reply"].map(
             lambda v: isinstance(v, str) and v.strip() != "").astype(bool)
     if "property_name" not in out.columns:
-        out["property_name"] = out["property"].map(lambda s: BY_SLUG[s].name if s in BY_SLUG else s)
+        out["property_name"] = out["property"].map(_name)
     return out
 
 
+_ALLOWED_ACTIONS = frozenset({sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION,
+                              sqlite3.SQLITE_RECURSIVE})
+
+
+def _read_only_authorizer(action, *_):
+    """Allow reading rows and nothing else: no writes, no ATTACH (which would create a file), no PRAGMA."""
+    return sqlite3.SQLITE_OK if action in _ALLOWED_ACTIONS else sqlite3.SQLITE_DENY
+
+
 def _connect_ro(db_path) -> sqlite3.Connection:
-    """Open read-only so a wrong path raises instead of silently creating an empty database."""
+    """Open read-only so a wrong path raises instead of silently creating an empty database.
+
+    The path is percent-encoded by Path.as_uri(), so a name such as ``x.db?mode=rwc`` stays a file NAME and
+    cannot add URI parameters. On top of mode=ro, an authorizer refuses everything except reading.
+    """
     if str(db_path) == ":memory:":
         return sqlite3.connect(":memory:")
-    return sqlite3.connect(Path(db_path).resolve().as_uri() + "?mode=ro", uri=True)
+    con = sqlite3.connect(Path(db_path).resolve().as_uri() + "?mode=ro", uri=True)
+    con.execute("PRAGMA query_only = ON")
+    con.set_authorizer(_read_only_authorizer)
+    return con
 
 
 def _read(db_path, sql: str, columns: list[str]) -> pd.DataFrame:
+    """Run one literal SELECT. A missing table gives an empty frame; any other problem (not a database,
+    corrupt, unreadable) is raised so the caller can tell the user, instead of looking like 'no data'."""
     con = _connect_ro(db_path)
     try:
         try:
             return pd.read_sql_query(sql, con)
-        except (pd.errors.DatabaseError, sqlite3.OperationalError):   # table does not exist yet
-            return pd.DataFrame({c: pd.Series(dtype="object") for c in columns})
+        except (pd.errors.DatabaseError, sqlite3.OperationalError) as exc:
+            if "no such table" in str(exc).lower() or "no such column" in str(exc).lower():
+                return pd.DataFrame({c: pd.Series(dtype="object") for c in columns})
+            raise
     finally:
         con.close()
 
@@ -206,24 +231,61 @@ def property_breakdown(df, week_start) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=BREAKDOWN_COLUMNS)
 
 
+_UNSAFE_NAME_CHARS = re.compile(r"[^\w .\-()']")
+MAX_NAME_CHARS = 60
+
+
+def safe_label(value, fallback: str = "Unknown") -> str:
+    """A database-supplied name made safe to show anywhere (HTML, chart labels, widgets, tables).
+
+    Only letters, digits, spaces and a few quiet symbols survive, so markup, links and control characters
+    cannot get through. Capped at 60 characters.
+    """
+    text = _UNSAFE_NAME_CHARS.sub("", str(value)) if value is not None else ""
+    text = " ".join(text.split())[:MAX_NAME_CHARS].strip()
+    return text or fallback
+
+
 def _name(slug: str) -> str:
-    return BY_SLUG[slug].name if slug in BY_SLUG else slug
+    return BY_SLUG[slug].name if slug in BY_SLUG else safe_label(slug, "Unknown hotel")
 
 
 TREND_COLUMNS = ["week_start", "n", "avg_rating", "positive", "mixed", "negative"]
 
 
+MAX_TREND_WEEKS = 520     # ten years; a tampered date range cannot make the trend loop over millennia
+
+
 def weekly_trend(df, start, end, properties=None) -> pd.DataFrame:
-    """One row per Mon-Sun week from the week of ``start`` to the week of ``end``; empty weeks have n=0."""
+    """One row per Mon-Sun week from the week of ``start`` to the week of ``end``; empty weeks have n=0.
+
+    At most MAX_TREND_WEEKS weeks are returned (the newest ones). One pass over the data, not one per week.
+    """
     d = _prepare(df)
+    first, last = week_start_of(start), week_start_of(end)
+    first = max(first, last - timedelta(weeks=MAX_TREND_WEEKS - 1))
+    d = d[(d["review_date"] >= pd.Timestamp(first)) & (d["review_date"] <= pd.Timestamp(last + timedelta(days=6)))]
+    if properties is not None:
+        d = d[d["property"].isin(list(properties))]
+    weeks = d["week_start"].tolist()
+    ratings = d["rating"].tolist()
+    bands = d["band"].tolist()
+    acc: dict = {}
+    for wk, rating, band in zip(weeks, ratings, bands):
+        slot = acc.setdefault(wk, [0, 0.0, 0, {"positive": 0, "mixed": 0, "negative": 0}])
+        slot[0] += 1
+        if rating == rating:           # a missing score (NaN) counts as a review but not towards the average
+            slot[1] += rating
+            slot[2] += 1
+        if band in slot[3]:
+            slot[3][band] += 1
     rows = []
-    w, last = week_start_of(start), week_start_of(end)
+    w = first
     while w <= last:
-        s = week_summary(d, w, properties)
+        n, total, rated, counts = acc.get(w, (0, 0.0, 0, {"positive": 0, "mixed": 0, "negative": 0}))
         rows.append({
-            "week_start": w, "n": s.n,
-            "avg_rating": s.avg_rating if s.avg_rating is not None else float("nan"),
-            "positive": s.positive, "mixed": s.mixed, "negative": s.negative,
+            "week_start": w, "n": n, "avg_rating": total / rated if rated else float("nan"),
+            "positive": counts["positive"], "mixed": counts["mixed"], "negative": counts["negative"],
         })
         w += timedelta(days=7)
     return pd.DataFrame(rows, columns=TREND_COLUMNS)
@@ -310,7 +372,7 @@ def topic_shares(df, topics, start, end, polarity="negative", properties=None) -
     labels = _topic_labels()
     counts = tags.groupby("topic").size()
     out = [{
-        "topic": t, "label": labels.get(t, t), "count": int(c), "n_reviews": n_reviews,
+        "topic": t, "label": labels.get(t, safe_label(t)), "count": int(c), "n_reviews": n_reviews,
         "share": (int(c) / n_reviews) if n_reviews else 0.0, "low_sample": n_reviews < LOW_SAMPLE_BELOW,
         "n_band_total": n_band,
     } for t, c in counts.items()]
@@ -327,7 +389,7 @@ def topic_by_property(df, topics, start, end, polarity="negative") -> pd.DataFra
     merged = tags.merge(rows[["review_key", "property"]], on="review_key")
     counts = merged.groupby(["property", "topic"]).size().to_dict()
     out = [{
-        "property": p, "property_name": _name(p), "topic": t, "label": labels.get(t, t),
+        "property": p, "property_name": _name(p), "topic": t, "label": labels.get(t, safe_label(t)),
         "count": int(counts.get((p, t), 0)),
     } for p in props for t in topic_ids]
     return pd.DataFrame(out, columns=HEATMAP_COLUMNS)
@@ -359,8 +421,27 @@ HEALTH_COLUMNS = ["property", "property_name", "stored", "last_ok_at", "latest_s
 
 
 def _utc(ts) -> pd.Timestamp:
-    t = pd.Timestamp(ts)
-    return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+    """A stored timestamp as UTC; text that is not a time (a damaged row) becomes NaT instead of an exception."""
+    try:
+        t = pd.Timestamp(ts)
+        if pd.isna(t):
+            return pd.NaT
+        return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+    except (ValueError, TypeError, OverflowError):
+        return pd.NaT
+
+
+def _flag(value) -> bool:
+    """A stored 0/1 flag; anything else that is not clearly 'true' counts as no."""
+    return str(value).strip().lower() in ("1", "true", "yes")
+
+
+def _count_or_none(value) -> int | None:
+    try:
+        n = int(float(value))
+    except (ValueError, TypeError, OverflowError):
+        return None
+    return n if n >= 0 else None
 
 
 def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
@@ -381,7 +462,7 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
     cover = _read(db_path, "SELECT property, truncated, reported_total FROM scrape_runs WHERE id IN "
                            "(SELECT MAX(id) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
                   ["property", "truncated", "reported_total"])
-    cover_by = {r.property: (bool(r.truncated), r.reported_total) for r in cover.itertuples()}
+    cover_by = {r.property: (_flag(r.truncated), _count_or_none(r.reported_total)) for r in cover.itertuples()}
     slugs = list(BY_SLUG)
     for frame in (stored, ok, latest):
         slugs += [s for s in frame["property"] if s not in slugs]
@@ -396,7 +477,7 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
         have = int(stored_by.get(slug, 0))
         note = ""
         if truncated:
-            of = f" of {int(reported):,}" if reported is not None and not pd.isna(reported) else ""
+            of = f" of {int(reported):,}" if reported is not None else ""
             note = (f"Showing the newest {have:,}{of} reviews on Booking.com. Older reviews are not collected "
                     f"(page limit), so history before the oldest one shown is missing.")
         rows.append({
@@ -404,7 +485,7 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
             "last_ok_at": last_ok, "latest_status": status, "latest_error": error,
             "stale": bool(pd.isna(last_ok) or now_ts - last_ok > STALE_AFTER),
             "truncated": truncated,
-            "reported_total": None if reported is None or pd.isna(reported) else int(reported),
+            "reported_total": reported,
             "coverage_note": note,
         })
     return pd.DataFrame(rows, columns=HEALTH_COLUMNS)

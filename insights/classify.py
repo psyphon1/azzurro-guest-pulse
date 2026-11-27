@@ -1,10 +1,50 @@
 """Keyword topic classifier: sentence level, polarity comes from which Booking.com box the text was in."""
 import re
+import unicodedata
 from dataclasses import dataclass
 
 from insights.topics import PROBLEM_KEYWORDS, TOPICS
 
 METHOD = "keywords"
+
+# Hostile or accidental giant text: only the start of each text is read, and evidence stays short.
+MAX_TEXT_CHARS = 5_000
+MAX_EVIDENCE_CHARS = 300
+# Bump when the way text is cleaned or matched changes, so the pipeline re-tags reviews it already did.
+CLASSIFIER_REVISION = "2"
+
+# Characters with no visible width, soft hyphens, bidi controls, variation selectors, control characters:
+# "d<zero-width space>irty" must read as "dirty".
+_INVISIBLE = re.compile(
+    "[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180f\u200b-\u200f\u202a-\u202e\u2060-\u206f"
+    "\u3164\ufe00-\ufe0f\ufeff\uffa0\U000e0000-\U000e0fff\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_MARKS_AFTER_ASCII = re.compile("(?<=[A-Za-z])[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff]+")
+_WORD = re.compile(r"[^\W_]+")
+# Look-alike letters (Cyrillic, Greek, a few Latin extensions) -> the Latin letter they imitate.
+_CONFUSABLES = {ord(a): b for a, b in zip(
+    "аеорсухіјѕһԁɡкмтԛԝӏ" "АВЕКМНОРСТХУ" "αορνιυκτχ" "ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ" "ᴀᴅᴇɪʟᴏᴜ",
+    "aeopcyxijshdgkmtqwl" "ABEKMHOPCTXY" "aopviuktx" "ABEZHIKMNOPTYX" "adeilou")}
+
+
+def _unmask_lookalikes(match: re.Match) -> str:
+    word = match.group(0)
+    if word.isascii():
+        return word
+    if all(ch.isascii() or ord(ch) in _CONFUSABLES for ch in word):
+        return word.translate(_CONFUSABLES)   # a word made only of Latin letters and look-alikes of them
+    return word
+
+
+def normalise(text: str) -> str:
+    """The text the classifier actually reads: capped, NFKC-folded (full-width letters become ASCII), invisible
+    characters removed, accents on Latin letters stripped, look-alike letters mapped to Latin."""
+    text = unicodedata.normalize("NFKC", text[:MAX_TEXT_CHARS])
+    text = _INVISIBLE.sub("", text)
+    if not text.isascii():
+        text = _MARKS_AFTER_ASCII.sub("", unicodedata.normalize("NFKD", text))
+        text = unicodedata.normalize("NFC", text)
+        text = _WORD.sub(_unmask_lookalikes, text)
+    return text
 
 
 @dataclass(frozen=True)
@@ -65,8 +105,9 @@ def _negated(prefix: str, is_problem: bool) -> bool:
 
 
 def _sentences(text: str | None) -> list[str]:
-    if not text:
+    if not text or not isinstance(text, str):   # NULL, numbers or blobs in a damaged database: nothing to read
         return []
+    text = normalise(text)
     return [s.strip() for s in _SENTENCE_SPLIT.split(text) if s.strip()]
 
 
@@ -105,7 +146,7 @@ def _tags_for(text: str | None, polarity: str) -> list[TopicTag]:
                     decisions.append(_keep(is_problem, negated, all_clear, polarity))
                 # One negated keyword cancels the topic in this clause ("staff weren't helpful").
                 if decisions and all(decisions):
-                    tags.append(TopicTag(topic_id, polarity, sentence, METHOD))
+                    tags.append(TopicTag(topic_id, polarity, sentence[:MAX_EVIDENCE_CHARS], METHOD))
     return tags
 
 

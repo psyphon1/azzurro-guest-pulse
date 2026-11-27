@@ -6,6 +6,7 @@ before it is placed inside HTML, because the dashboard renders cards with unsafe
 from __future__ import annotations
 
 import html
+import re
 
 # Colours. Good = green, watch = amber, bad = red. Never the only signal: always paired with words/arrows.
 INK = "#1B2A2F"
@@ -94,11 +95,42 @@ h2 {{ border-bottom: 2px solid {LINE}; padding-bottom: .3rem; margin-top: 1.6rem
 """
 
 
-def esc(value) -> str:
-    """HTML-escape untrusted text; also neutralise `$` (Streamlit may treat it as maths) and keep line breaks."""
+MAX_TEXT_CHARS = 5_000   # one review is never longer than this on screen; a 5 MB review must not become a 5 MB page
+# C0/C1 control characters (except tab and newline) and the bidirectional override/isolate controls that
+# can make text read in a different order than it is stored ("Trojan Source" style spoofing).
+_HIDDEN = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c\ufeff]")
+
+
+def clean_text(value, limit: int = MAX_TEXT_CHARS) -> str:
+    """Untrusted text made safe to show: no control or bidi-override characters, at most `limit` characters."""
     if value is None:
         return ""
-    return html.escape(str(value), quote=True).replace("$", "&#36;").replace("\n", "<br>")
+    text = _HIDDEN.sub("", str(value))
+    if len(text) > limit:
+        text = text[:limit].rstrip() + " (shortened)"
+    return text
+
+
+def plain_text(value, limit: int = 300) -> str:
+    """Untrusted text for tables and captions: control characters gone, angle brackets gone, shortened."""
+    from dashboard.ui.privacy import mask_pii
+    return mask_pii(clean_text(value, limit)).replace("<", "").replace(">", "")
+
+
+def esc(value, limit: int = MAX_TEXT_CHARS) -> str:
+    """HTML-escape untrusted text for use inside our own HTML.
+
+    Besides `<>&"'` it also neutralises, as character references, everything Markdown could act on
+    (`[`, `]`, backtick, `://`) so that hostile text can never become a link or an image (a tracking pixel)
+    even if the renderer treated it as Markdown, and `$` (Streamlit may treat it as maths).
+    Line breaks are kept. Hidden control characters are dropped and very long text is shortened.
+    """
+    if value is None:
+        return ""
+    out = html.escape(clean_text(value, limit), quote=True)
+    out = (out.replace("$", "&#36;").replace("[", "&#91;").replace("]", "&#93;").replace("`", "&#96;")
+           .replace("://", ":&#47;&#47;"))
+    return out.replace("\r\n", "<br>").replace("\n", "<br>").replace("\r", "<br>")
 
 
 def badge(text: str, kind: str = "neutral", tip: str = "") -> str:
