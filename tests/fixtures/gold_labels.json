@@ -1,0 +1,631 @@
+[
+ {
+  "id": "real_1_b5dd03",
+  "source": "real fixture",
+  "liked": "The price and location were good.",
+  "disliked": "The lobby looked like an unwelcoming storage room. There was clearly a sewerage issue in the bathrooms that made the smell in the hallway unbearable. The kitchen area was grubby and poorly equipped.",
+  "expected": [
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_2_cdea28",
+  "source": "real fixture",
+  "liked": "The location was good for public transportation",
+  "disliked": "There was a kettle, but no cups and cockroaches, which I did inform the virtual receptionist about. It’s a little noisy when people have walked past your room.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_3_682d57",
+  "source": "real fixture",
+  "liked": "Staff gave all the needed information to check in and get into the room.",
+  "disliked": "The shower was really dirty and needs a good clean. The toilet paper holder was broken.",
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_4_86be75",
+  "source": "real fixture",
+  "liked": "GOING OUT THE DOOR.",
+  "disliked": "NO AIR CONDITIONING, NO CUPS, NO MILK AND THEY DID NOT CARE",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "real_5_0792d4",
+  "source": "real fixture",
+  "liked": "great location",
+  "disliked": "had a little problem with the robo check in but it took time and I worked it out.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "neg_not_dirty_but_thin_walls",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The room was not dirty but the walls were paper thin.",
+  "expected": [
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "neg_no_issues_with_noise",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "No issues with noise.",
+  "expected": []
+ },
+ {
+  "id": "quiet_praise",
+  "source": "hand-written",
+  "liked": "Very quiet at night.",
+  "disliked": null,
+  "expected": [
+   [
+    "noise",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "neg_not_clean_in_liked",
+  "source": "hand-written",
+  "liked": "Not clean at all.",
+  "disliked": null,
+  "expected": []
+ },
+ {
+  "id": "neg_nothing_to_complain",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Nothing to complain about.",
+  "expected": []
+ },
+ {
+  "id": "mixed_staff_and_smell",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Staff were rude and the room smelled of smoke.",
+  "expected": [
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "staff_and_checkin_praise",
+  "source": "hand-written",
+  "liked": "Friendly reception staff and quick check in.",
+  "disliked": null,
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "check_in",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "wifi_complaint",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Wifi kept dropping out.",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "value_praise",
+  "source": "hand-written",
+  "liked": "Good value for money.",
+  "disliked": null,
+  "expected": [
+   [
+    "value",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "value_complaint",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Too expensive for what you get.",
+  "expected": [
+   [
+    "value",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "bed_and_window",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The bed was uncomfortable and the window would not close.",
+  "expected": [
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "location_walking",
+  "source": "hand-written",
+  "liked": "Walking distance to Allianz Stadium.",
+  "disliked": null,
+  "expected": [
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "location_far_station",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Far from the station.",
+  "expected": [
+   [
+    "location",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "door_code_wait",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Could not get the door code to work and waited 30 minutes.",
+  "expected": [
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "self_checkin_praise",
+  "source": "hand-written",
+  "liked": "Self check-in was easy.",
+  "disliked": null,
+  "expected": [
+   [
+    "check_in",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "no_staff_on_site",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "No staff on site when we had a problem.",
+  "expected": [
+   [
+    "staff",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "lift_broken_is_facilities_only",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The lift was broken.",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "two_topics_one_sentence",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Street noise all night and the air conditioning was loud.",
+  "expected": [
+   [
+    "noise",
+    "negative"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "spotless_and_bed",
+  "source": "hand-written",
+  "liked": "Spotless room, comfy bed.",
+  "disliked": null,
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "room_condition",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "kettle_provided",
+  "source": "hand-written",
+  "liked": "The kettle and cups were provided.",
+  "disliked": null,
+  "expected": [
+   [
+    "facilities",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "hair_and_mould",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Hair in the shower and mould on the ceiling.",
+  "expected": [
+   [
+    "cleanliness",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "empty_both",
+  "source": "hand-written",
+  "liked": "",
+  "disliked": "",
+  "expected": []
+ },
+ {
+  "id": "none_both",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": null,
+  "expected": []
+ },
+ {
+  "id": "staff_not_helpful_in_liked",
+  "source": "hand-written",
+  "liked": "Staff were not helpful.",
+  "disliked": null,
+  "expected": []
+ },
+ {
+  "id": "no_topic_neutral",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "It was fine.",
+  "expected": []
+ },
+ {
+  "id": "no_topic_generic_praise",
+  "source": "hand-written",
+  "liked": "Loved it, would stay again!",
+  "disliked": null,
+  "expected": []
+ },
+ {
+  "id": "clean_value_and_slow_wifi",
+  "source": "hand-written",
+  "liked": "Nice and clean. Great price.",
+  "disliked": "Slow wifi.",
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "value",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "sarcasm_liked_cockroaches",
+  "source": "hand-written",
+  "liked": "Lovely cockroaches, really enjoyed sharing my room.",
+  "disliked": null,
+  "expected": []
+ },
+ {
+  "id": "not_close_to_transport",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The hotel is not close to public transport.",
+  "expected": [
+   [
+    "location",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "double_negation_praise",
+  "source": "hand-written",
+  "liked": "Not noisy and not dirty.",
+  "disliked": null,
+  "expected": [
+   [
+    "noise",
+    "positive"
+   ],
+   [
+    "cleanliness",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "three_topics_one_sentence",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The shower was dirty, the staff ignored us and it was too noisy.",
+  "expected": [
+   [
+    "cleanliness",
+    "negative"
+   ],
+   [
+    "staff",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "cheap_but_lumpy_mattress",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Cheap but you get what you pay for, the mattress was lumpy.",
+  "expected": [
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "location_next_to_train",
+  "source": "hand-written",
+  "liked": "The location was perfect, right next to the train.",
+  "disliked": null,
+  "expected": [
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "no_hot_water",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "No hot water in the morning.",
+  "expected": [
+   [
+    "facilities",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "checkin_nightmare",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Check in was a nightmare, nobody answered the phone.",
+  "expected": [
+   [
+    "check_in",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "clean_bathroom_helpful_staff",
+  "source": "hand-written",
+  "liked": "Bathroom was clean and staff helpful.",
+  "disliked": null,
+  "expected": [
+   [
+    "cleanliness",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "not_worth_it",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Not worth the money.",
+  "expected": [
+   [
+    "value",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "tired_room",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The room is tired and needs renovation.",
+  "expected": [
+   [
+    "room_condition",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "host_replied_quickly",
+  "source": "hand-written",
+  "liked": "Host replied quickly.",
+  "disliked": null,
+  "expected": [
+   [
+    "staff",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "party_next_door",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "There was a party next door until 3am.",
+  "expected": [
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ },
+ {
+  "id": "rough_street_is_not_noise",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "The street outside is a bit rough.",
+  "expected": []
+ },
+ {
+  "id": "close_to_everything",
+  "source": "hand-written",
+  "liked": "Close to everything.",
+  "disliked": null,
+  "expected": [
+   [
+    "location",
+    "positive"
+   ]
+  ]
+ },
+ {
+  "id": "breakfast_not_included",
+  "source": "hand-written",
+  "liked": null,
+  "disliked": "Breakfast was not included.",
+  "expected": []
+ },
+ {
+  "id": "multi_sentence_mixed",
+  "source": "hand-written",
+  "liked": "Great location. Lovely helpful staff.",
+  "disliked": "The air conditioning was broken. Very noisy. Nothing else to complain about.",
+  "expected": [
+   [
+    "location",
+    "positive"
+   ],
+   [
+    "staff",
+    "positive"
+   ],
+   [
+    "facilities",
+    "negative"
+   ],
+   [
+    "noise",
+    "negative"
+   ]
+  ]
+ }
+]

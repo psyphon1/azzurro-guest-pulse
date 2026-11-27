@@ -158,3 +158,15 @@ class ReviewStore:
         self._db.executemany("UPDATE reviews SET missing_since=? WHERE review_key=?", [(now, k) for k in gone])
         self._db.commit()
         return len(gone)
+
+    def close_stale_runs(self, property_slug: str) -> int:
+        """A run still marked 'running' when a new one starts means the process was killed.
+        Close it so the data-health panel never claims a run is in progress forever."""
+        cur = self._db.execute(
+            "UPDATE scrape_runs SET status='interrupted', finished_at=?, "
+            "error='Run did not finish (process stopped before completing)' "
+            "WHERE property=? AND status='running'",
+            (self._now(), property_slug),
+        )
+        self._db.commit()
+        return cur.rowcount

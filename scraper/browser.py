@@ -55,10 +55,7 @@ def fetch_pages(url: str, slug: str, headless: bool = False) -> Iterator[ParsedP
                 page.goto(url, wait_until="domcontentloaded", timeout=60_000)
                 _wait_for_challenge(page)
 
-                page.locator(READ_ALL).first.scroll_into_view_if_needed()
-                with page.expect_response(_is_review_list, timeout=30_000):
-                    page.locator(READ_ALL).first.click()
-                page.wait_for_selector(SORTER, timeout=15_000)
+                _open_reviews_panel(page)
 
                 with page.expect_response(_is_review_list, timeout=30_000) as info:
                     page.select_option(SORTER, "NEWEST_FIRST")
@@ -78,6 +75,24 @@ def fetch_pages(url: str, slug: str, headless: bool = False) -> Iterator[ParsedP
         raise FetchError(f"Timed out waiting for the page: {str(exc)[:120]}") from exc
     except PlaywrightError as exc:
         raise FetchError(f"Browser error: {str(exc)[:120]}") from exc
+
+
+def _open_reviews_panel(page, attempts: int = 3) -> None:
+    """Click 'Read all reviews'. The page re-renders after the bot check, so the button can be
+    replaced under us. Click directly (Playwright re-finds the element) and retry a few times."""
+    page.wait_for_load_state("load", timeout=30_000)
+    page.wait_for_timeout(2000)  # let the page finish re-rendering
+    last_error: Exception | None = None
+    for _ in range(attempts):
+        try:
+            with page.expect_response(_is_review_list, timeout=20_000):
+                page.locator(READ_ALL).first.click(timeout=15_000)
+            page.wait_for_selector(SORTER, timeout=15_000)
+            return
+        except (PlaywrightTimeout, PlaywrightError) as exc:
+            last_error = exc
+            page.wait_for_timeout(2000)
+    raise FetchError(f"Could not open the reviews panel after {attempts} tries: {str(last_error)[:120]}")
 
 
 def _wait_for_challenge(page) -> None:

@@ -26,6 +26,7 @@ class CollectionSummary:
 def collect_property(slug: str, pages: Iterable[ParsedPage], store: ReviewStore, mode: str) -> CollectionSummary:
     """Pull pages (newest first), store them, and record the outcome. Never raises on fetch problems,
     so one failing property cannot stop the others."""
+    store.close_stale_runs(slug)
     run_id = store.start_run(slug, mode)
     summary = CollectionSummary(status="ok")
     seen: set[str] = set()
@@ -49,6 +50,10 @@ def collect_property(slug: str, pages: Iterable[ParsedPage], store: ReviewStore,
         summary.status, summary.error = "blocked", str(exc)
     except (FetchError, ParseError) as exc:
         summary.status, summary.error = "failed", str(exc)
+    except KeyboardInterrupt:
+        store.finish_run(run_id, "interrupted", summary.pages, summary.new, summary.updated,
+                         summary.rejected, "Stopped by user (Ctrl+C); pages already saved were kept")
+        raise
 
     summary.stored_total = store.count(slug)
 

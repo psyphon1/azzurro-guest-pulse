@@ -13,3 +13,4 @@ __pycache__/
 data/raw/
 data/*.db-journal
 .DS_Store
+data/demo.db

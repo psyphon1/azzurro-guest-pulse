@@ -142,3 +142,22 @@ def test_layout_change_mid_run_is_recorded_as_failed_with_a_clear_message(store,
     assert s.status == "failed"
     assert "layout" in s.error
     assert store.count(SLUG) == 2
+
+
+def test_a_crashed_earlier_run_is_closed_when_the_next_run_starts(store, sample_page):
+    stale = store.start_run(SLUG, "full")  # left 'running' by a killed process
+
+    collect_property(SLUG, CountingPages([page_of(sample_page.reviews)]), store, mode="full")
+
+    statuses = {r["id"]: r["status"] for r in store._db.execute("SELECT id, status FROM scrape_runs")}
+    assert statuses[stale] == "interrupted"
+
+
+def test_ctrl_c_marks_the_run_interrupted_and_keeps_saved_pages(store, sample_page):
+    pages = CountingPages([page_of(sample_page.reviews[:3])], then_raise=KeyboardInterrupt())
+
+    with pytest.raises(KeyboardInterrupt):
+        collect_property(SLUG, pages, store, mode="full")
+
+    assert store.latest_run(SLUG)["status"] == "interrupted"
+    assert store.count(SLUG) == 3

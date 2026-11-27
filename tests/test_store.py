@@ -91,3 +91,16 @@ def test_run_ledger_records_outcome_and_latest_success(store, clock):
     last_ok = store.last_successful_run("olympic-paddington")
     assert last_ok["new"] == 7
     assert store.latest_run("olympic-paddington")["status"] == "blocked"
+
+
+def test_unfinished_runs_are_closed_as_interrupted(store):
+    old = store.start_run("olympic-paddington", mode="full")  # process was killed, never finished
+    other = store.start_run("venus-surry-hills", mode="full")
+
+    closed = store.close_stale_runs("olympic-paddington")
+
+    assert closed == 1
+    row = store.latest_run("olympic-paddington")
+    assert row["id"] == old and row["status"] == "interrupted"
+    assert "did not finish" in row["error"]
+    assert store.latest_run("venus-surry-hills")["status"] == "running"  # other property untouched

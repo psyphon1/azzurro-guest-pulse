@@ -1,0 +1,119 @@
+"""Keyword topic classifier: sentence level, polarity comes from which Booking.com box the text was in."""
+import re
+from dataclasses import dataclass
+
+from insights.topics import PROBLEM_KEYWORDS, TOPICS
+
+METHOD = "keywords"
+
+
+@dataclass(frozen=True)
+class TopicTag:
+    topic: str
+    polarity: str  # 'positive' | 'negative'
+    evidence: str  # the exact sentence that triggered the tag
+    method: str
+
+
+def _compile(keywords) -> re.Pattern:
+    alts = sorted((re.escape(k) for k in keywords), key=len, reverse=True)
+    return re.compile(
+        r"(?<![\w'])(?P<kw>" + "|".join(alts) + r")(?:s|es|ed|ing)?(?![\w'])", re.IGNORECASE
+    )
+
+
+_PATTERNS = {tid: _compile(t.keywords) for tid, t in TOPICS.items()}
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+# A clause ends at punctuation or a contrast word; negation never reaches across a clause boundary.
+_CLAUSE_BREAK = re.compile(r"[,;:()\u2013\u2014]|\s-\s|\s(?:but|however|although|though|while|whereas|except)\s")
+_TOKEN = re.compile(r"[\w']+")
+
+_NEGATORS = frozenset({"not", "no", "never", "without", "nothing", "none", "hardly", "cannot", "nor", "zero"})
+# Words allowed between a negator and a PROBLEM keyword: "was not at all dirty", "no real noise".
+_FILLERS = frozenset({
+    "very", "really", "particularly", "that", "too", "so", "at", "all", "overly", "especially", "quite",
+    "entirely", "completely", "extremely", "a", "an", "bit", "the", "was", "were", "is", "are", "be", "been",
+    "being", "looked", "seemed", "felt", "smelled", "any", "real", "major", "big", "much", "of", "kind",
+    "sort", "actually", "always", "single", "little",
+})
+_ALL_CLEAR = re.compile(
+    r"\b(?:no|not\s+any|without\s+any|zero|nothing)\s+(?:\w+\s+){0,2}?"
+    r"(?:issues?|problems?|complaints?|complain\w*|faults?|concerns?|negatives?)\b"
+    r"|\bnothing\s+(?:bad|negative|wrong|to\s+(?:complain|dislike|criticise|criticize))"
+    r"|\b(?:can't|cannot|couldn't|can\s+not|could\s+not)\s+(?:complain|fault|faulted)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_negator(token: str) -> bool:
+    return token in _NEGATORS or token.endswith("n't")
+
+
+def _negated(prefix: str, is_problem: bool) -> bool:
+    """Is the keyword that follows `prefix` (same clause) negated?"""
+    tokens = _TOKEN.findall(prefix.lower())
+    if not is_problem:
+        # "not close to the station", "no air conditioning": any negator earlier in the clause counts.
+        return any(_is_negator(t) for t in tokens[-6:])
+    # Problem words need a tight window so "no cups and cockroaches" still reports the cockroaches.
+    for token in reversed(tokens[-4:]):
+        if _is_negator(token):
+            return True
+        if token not in _FILLERS:
+            return False
+    return False
+
+
+def _sentences(text: str | None) -> list[str]:
+    if not text:
+        return []
+    return [s.strip() for s in _SENTENCE_SPLIT.split(text) if s.strip()]
+
+
+def _clauses(sentence: str) -> list[tuple[int, int]]:
+    spans, start = [], 0
+    for m in _CLAUSE_BREAK.finditer(sentence):
+        spans.append((start, m.start()))
+        start = m.end()
+    spans.append((start, len(sentence)))
+    return spans
+
+
+def _keep(is_problem: bool, negated: bool, all_clear: bool, polarity: str) -> bool:
+    """Does this keyword match yield a tag in a `polarity` section?"""
+    if all_clear:  # "no issues with X": good news about X
+        return polarity == "positive"
+    if not negated:
+        return True
+    # "not dirty" is good news (kept only in liked); "not clean", "no kettle" are bad news (kept only in disliked)
+    return polarity == ("positive" if is_problem else "negative")
+
+
+def _tags_for(text: str | None, polarity: str) -> list[TopicTag]:
+    tags = []
+    for sentence in _sentences(text):
+        # Straight apostrophes for matching only; the evidence keeps the original text (same length).
+        norm = sentence.replace("\u2019", "'")
+        for start, end in _clauses(norm):
+            clause = norm[start:end]
+            all_clear = bool(_ALL_CLEAR.search(clause))
+            for topic_id, pattern in _PATTERNS.items():
+                decisions = []
+                for m in pattern.finditer(clause):
+                    is_problem = m.group("kw").lower() in PROBLEM_KEYWORDS
+                    negated = _negated(clause[: m.start()], is_problem)
+                    decisions.append(_keep(is_problem, negated, all_clear, polarity))
+                # One negated keyword cancels the topic in this clause ("staff weren't helpful").
+                if decisions and all(decisions):
+                    tags.append(TopicTag(topic_id, polarity, sentence, METHOD))
+    return tags
+
+
+def classify_review(liked: str | None, disliked: str | None) -> list[TopicTag]:
+    seen: set[tuple[str, str]] = set()
+    result = []
+    for tag in _tags_for(liked, "positive") + _tags_for(disliked, "negative"):
+        if (tag.topic, tag.polarity) not in seen:
+            seen.add((tag.topic, tag.polarity))
+            result.append(tag)
+    return result
