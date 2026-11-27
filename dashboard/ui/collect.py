@@ -105,6 +105,14 @@ def stop() -> bool:
     return True
 
 
+def new_keys() -> set[str]:
+    """Review keys added by the last finished fetch (empty when it found nothing or never ran)."""
+    data = status()
+    if data.get("state") != "done":
+        return set()
+    return {k for k in data.get("new_keys", []) if isinstance(k, str)}
+
+
 def log_tail(lines: int = 12) -> str:
     try:
         return "\n".join(LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:])

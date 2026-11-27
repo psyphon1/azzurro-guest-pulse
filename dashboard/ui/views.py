@@ -2,7 +2,7 @@
 dashboard.ui.data; these functions only lay them out. All database text goes through esc()/guest_text()."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 
 from dashboard.ui import data as D
 from dashboard.ui.privacy import mask_pii, mask_profanity
-from dashboard.ui.style import (BAD, GOOD, INK, LINE, MUTED, TEAL, TOKENS, badge, clean_text, esc, one_line,
+from dashboard.ui.style import (BAD, GOOD, INK, LINE, TEAL, TOKENS, badge, clean_text, esc, one_line,
                                 plain_text)
 from insights import metrics as m
 from insights.classify import is_low_signal
@@ -141,6 +141,13 @@ def _fetch_progress() -> None:
                   help="Press again to force it to stop.")
         return
     st.session_state["fetch_watching"] = False
+    last = collect.status()
+    n = int(last.get("new_count", 0) or 0) if last.get("state") == "done" else 0
+    st.session_state["fetch_result"] = n
+    if n:                       # show the new reviews in the feed below, and go there
+        st.session_state["feed_new_only"] = True
+        st.session_state["scroll_to_feed"] = True
+        st.session_state["feed_page"] = 1
     st.rerun()
 
 
@@ -161,8 +168,15 @@ def render_fetch(db_path: Path) -> None:
         st.caption(esc(msg[1]))
         return
     last = collect.status()
+    result = st.session_state.pop("fetch_result", None)
+    if result is not None and last.get("state") == "done":
+        if result:
+            st.success(f"{result} new review{'s' if result != 1 else ''} added. They are shown in the feed below.")
+        else:
+            st.info("No new reviews since the last fetch.")
     if last.get("state") == "done" and last.get("finished_at"):
-        st.caption(f"Last fetch finished {esc(D.to_sydney(last['finished_at']))}.")
+        n = int(last.get("new_count", 0) or 0)
+        st.caption(f"Last fetch {esc(D.to_sydney(last['finished_at']))}: {n} new review{'s' if n != 1 else ''}.")
     elif last.get("state") == "stopped":
         st.caption("Last fetch was stopped; the reviews it had already found were kept.")
     elif last.get("state") == "failed":
@@ -172,6 +186,11 @@ def render_fetch(db_path: Path) -> None:
 # --- filter bar --------------------------------------------------------------------------------------------------
 def period_word(p: str) -> str:
     return "30 days" if p == "Last 30 days" else p
+
+
+def _show_all_reviews() -> None:
+    st.session_state["feed_new_only"] = False
+    st.session_state["feed_page"] = 1
 
 
 def _show_all_hotels() -> None:
@@ -422,9 +441,10 @@ def _chips(chips: list, labels: dict[str, str]) -> str:
     return "".join(out)
 
 
-def review_row(r, chips: list, labels: dict[str, str]) -> str:
+def review_row(r, chips: list, labels: dict[str, str], is_new: bool = False) -> str:
     cls, word = _band(r.band)
-    return (f'<div class="az-row az-review-row"><span class="az-score {cls}">{r.rating:g}/10 {word}</span>'
+    new = '<span class="az-chip new">New</span>' if is_new else ""
+    return (f'<div class="az-row az-review-row">{new}<span class="az-score {cls}">{r.rating:g}/10 {word}</span>'
             f'<b>{esc(r.property_name)}</b><span class="az-note">{r.review_date.strftime("%a %d %b %Y")}</span>'
             f'<span class="snip">{esc(snippet(r))}</span>{_chips(chips, labels)}</div>')
 
@@ -484,7 +504,14 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
                                max_chars=D.MAX_SEARCH_CHARS)
     with c4:
         sort = st.selectbox("Sort by", ["Newest first", "Lowest score first"], key="feed_sort")
+    from dashboard.ui import collect
+    fresh = collect.new_keys()
     data = df_range
+    if st.session_state.get("feed_new_only"):
+        data = data[data["review_key"].isin(fresh)]
+        a, b = st.columns([5, 1], vertical_alignment="center")
+        a.success(f"Showing the {len(data)} new review{'s' if len(data) != 1 else ''} from the last fetch.")
+        b.button("Show all reviews", key="feed_new_clear", on_click=_show_all_reviews, use_container_width=True)
     slug = st.session_state.get("feed_hotel")
     if slug in valid_slugs:
         data = data[data["property"] == slug]
@@ -497,7 +524,7 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
                         no_reply="Needs reply" in pills, search=search, sort=sort,
                         only_with_comment="Has comment" in pills)
     total = len(out)
-    sig = (tuple(pills), topic_choice, search, sort, slug, len(df_range))
+    sig = (tuple(pills), topic_choice, search, sort, slug, len(df_range), bool(st.session_state.get("feed_new_only")))
     if st.session_state.get("feed_sig") != sig:
         st.session_state["feed_sig"] = sig
         st.session_state["feed_page"] = 1
@@ -511,7 +538,7 @@ def render_feed(df_range: pd.DataFrame, chips: dict, labels: dict[str, str], top
     st.caption(f"{total} review{'s' if total != 1 else ''} match ({n_text} with a comment). Page {page} of {pages}. "
                "Reviewer names are never stored.")
     for r in out.iloc[(page - 1) * PAGE_SIZE: page * PAGE_SIZE].itertuples(index=False):
-        html(review_row(r, chips.get(r.review_key, []), labels))
+        html(review_row(r, chips.get(r.review_key, []), labels, r.review_key in fresh))
         with st.expander("Read full review"):
             html(review_detail(r))
 

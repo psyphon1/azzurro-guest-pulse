@@ -109,8 +109,15 @@ def main(argv=None) -> int:
 def _collect_once(prop, store, args):
     since = None if args.no_date_window else args.since_days
     pages = fetch_pages(prop.url, prop.slug, hidden=True) if args.hidden_window else fetch_pages(prop.url, prop.slug)
-    s = collect_property(prop.slug, pages, store, args.mode,
-                         max_pages=args.max_pages, since_days=since, today=_today())
+    try:
+        s = collect_property(prop.slug, pages, store, args.mode,
+                             max_pages=args.max_pages, since_days=since, today=_today())
+    finally:
+        # A run that stops early leaves the page generator (and its browser) open; close it here, now, so the
+        # next hotel's browser does not start inside the old one's event loop.
+        close = getattr(pages, "close", None)
+        if close:
+            close()
     print(f"[{prop.name}] {s.status}: pages={s.pages} new={s.new} updated={s.updated} "
           f"rejected={s.rejected} stored={s.stored_total} reported_total={s.reported_total}"
           + (f" stop={s.stop_reason}" if s.stop_reason else "")

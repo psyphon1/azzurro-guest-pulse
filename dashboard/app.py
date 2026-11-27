@@ -63,7 +63,7 @@ def _clear_filters() -> None:
     today = D.today_sydney()
     ss["f_period"], ss["f_hotels"], ss["f_custom"] = D.DEFAULT_PERIOD, [], (D.monday_of(today), today)
     for key, value in (("feed_pills", []), ("feed_topic", ""), ("feed_search", ""), ("feed_hotel", None),
-                       ("feed_page", 1)):
+                       ("feed_page", 1), ("feed_new_only", False)):
         ss[key] = value
 
 
@@ -149,7 +149,9 @@ def render_dashboard(db_path, bundle) -> None:
 
     # --- feed, health, help ---------------------------------------------------------------------------------
     chips = D.topic_chips(topics)
-    V.render_feed(df_range, chips, labels, topics_ready, set(sel_slugs), name_by_slug)
+    # After a fetch the feed shows the new reviews whatever period is picked (they may be older than "this week").
+    feed_source = df if ss.get("feed_new_only") else df_range
+    V.render_feed(feed_source, chips, labels, topics_ready, set(sel_slugs), name_by_slug)
     V.render_health_table(health)
     V.render_howto()
 

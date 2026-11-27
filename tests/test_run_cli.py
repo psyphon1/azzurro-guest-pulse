@@ -174,3 +174,27 @@ def test_a_hotel_that_stays_blocked_is_retried_only_once_then_reported(tmp_path,
 
     assert code == 1 and calls["n"] == 2
     assert "try again later" in capsys.readouterr().out.lower()
+
+
+def test_each_hotels_browser_is_closed_even_when_the_run_stops_early(tmp_path, sample_page, monkeypatch, fixed_today):
+    """Regression: an incremental run that stopped early left its browser generator open, so the next hotel's
+    browser failed with "Sync API inside the asyncio loop". The generator must be closed right after each hotel."""
+    closed, kept = [], []
+
+    def fetcher(url, slug, **kw):
+        try:
+            while True:            # never runs out: only the page cap stops the run
+                yield sample_page
+        finally:
+            closed.append(slug)
+
+    def keeping(url, slug, **kw):
+        gen = fetcher(url, slug, **kw)
+        kept.append(gen)           # an extra reference: garbage collection alone would not close it
+        return gen
+
+    monkeypatch.setattr(run_module, "fetch_pages", keeping)
+    monkeypatch.setattr(run_module, "_sleep", lambda s: None)
+    run_module.main(["--property", "all", "--db", str(tmp_path / "r.db"), "--pause", "0", "--max-pages", "1"])
+    from scraper.config import PROPERTIES
+    assert closed == [p.slug for p in PROPERTIES]

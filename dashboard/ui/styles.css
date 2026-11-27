@@ -172,6 +172,7 @@ h3 { font-size: 16px !important; font-weight: 650 !important; }
 .az-chip.neg { background: var(--bad-bg); color: var(--bad) !important; }
 .az-chip.pos { background: var(--good-bg); color: var(--good) !important; }
 .az-chip.safety { background: var(--bad); color: #FFFFFF !important; }
+.az-chip.new { background: var(--accent); color: #FFFFFF !important; }
 .az-nocomment { font-style: italic; color: var(--muted) !important; }
 
 @media (max-width: 760px) {
