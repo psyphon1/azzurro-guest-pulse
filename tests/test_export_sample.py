@@ -106,3 +106,61 @@ def test_a_hotel_with_no_data_is_reported_not_hidden(tmp_path):
 def test_refuses_to_overwrite_the_live_database_with_its_own_sample(src):
     with pytest.raises(ValueError):
         export_sample(src, "x.csv", per_property=5, sample_db_path=src)
+
+
+# ---------------------------------------------------------------- red team on the export script itself
+def test_csv_path_may_not_be_the_live_database_or_the_sample_database(src, tmp_path):
+    with pytest.raises(ValueError, match="live database"):
+        export_sample(src, src, per_property=5, sample_db_path=None)                       # would overwrite the database with CSV text
+    sample = str(tmp_path / "sample.db")
+    with pytest.raises(ValueError):
+        export_sample(src, sample, per_property=5, sample_db_path=sample)
+    assert sqlite3.connect(src).execute("select count(*) from reviews").fetchone()[0] == 80   # still intact
+
+
+def test_an_unrelated_existing_file_is_never_deleted_by_the_sample_step(src, tmp_path):
+    precious = tmp_path / "important.db"
+    precious.write_text("my thesis, not a database")
+
+    with pytest.raises(ValueError, match="not a previous sample"):
+        export_sample(src, str(tmp_path / "s.csv"), per_property=5, sample_db_path=str(precious))
+
+    assert precious.read_text() == "my thesis, not a database"
+
+
+def test_a_previous_sample_database_can_be_replaced(src, tmp_path):
+    target = str(tmp_path / "sample.db")
+    export_sample(src, str(tmp_path / "s.csv"), per_property=5, sample_db_path=target)
+    out = export_sample(src, str(tmp_path / "s.csv"), per_property=3, sample_db_path=target)      # second run overwrites the first
+    assert sqlite3.connect(out.sample_db_path).execute("select count(*) from reviews").fetchone()[0] == 12
+
+
+@pytest.mark.parametrize("bad", [0, -1, 10**9])
+def test_per_property_is_bounded(src, tmp_path, bad):
+    with pytest.raises(ValueError, match="per_property"):
+        export_sample(src, str(tmp_path / "s.csv"), per_property=bad, sample_db_path=None)
+
+
+def test_a_symlink_to_the_live_database_is_still_recognised(src, tmp_path):
+    link = tmp_path / "innocent.db"
+    link.symlink_to(src)
+    with pytest.raises(ValueError):
+        export_sample(src, str(tmp_path / "s.csv"), per_property=5, sample_db_path=str(link))
+
+
+def test_committed_real_review_fixtures_contain_no_email_or_phone_numbers():
+    import json
+    from pathlib import Path
+
+    from dashboard.ui.privacy import looks_like_pii
+
+    checked = 0
+    for path in Path(__file__).parent.joinpath("fixtures").glob("*.json"):
+        data = json.loads(path.read_text())
+        if not (isinstance(data, list) and data and isinstance(data[0], dict)):
+            continue                                   # raw API payloads are covered by the parser tests
+        checked += 1
+        for case in data:
+            for field in ("liked", "disliked", "title", "host_reply"):
+                assert not looks_like_pii(case.get(field) or ""), f"{path.name}: {case.get('id')} has contact details"
+    assert checked >= 2                                # both gold files were really inspected

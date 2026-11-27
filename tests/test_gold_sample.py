@@ -68,3 +68,13 @@ def test_sampling_never_modifies_the_database(db):
     before = sqlite3.connect(db).execute("select count(*) from reviews").fetchone()
     sample_reviews(db, 30, seed=1)
     assert sqlite3.connect(db).execute("select count(*) from reviews").fetchone() == before
+
+
+def test_the_sample_output_must_be_a_json_file_and_never_a_database(db, tmp_path, monkeypatch):
+    import sys
+    from scripts import make_gold_sample as m
+
+    monkeypatch.setattr(sys, "argv", ["x", "--db", db, "--out", db])               # would overwrite the database
+    with pytest.raises(SystemExit):
+        m.main()
+    assert sqlite3.connect(db).execute("select count(*) from reviews").fetchone()[0] > 100

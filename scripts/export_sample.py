@@ -45,10 +45,38 @@ def _newest(df, per_property: int):
     return pd.concat(parts, ignore_index=True) if parts else df.iloc[0:0]
 
 
+MAX_PER_PROPERTY = 10_000
+
+
+def _same_file(a: str, b: str) -> bool:
+    return Path(a).resolve() == Path(b).resolve()
+
+
+def _is_previous_sample(path: str) -> bool:
+    """Only a file that really is one of our review databases may be replaced; anything else is somebody's data."""
+    try:
+        con = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+        try:
+            return con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviews'").fetchone() is not None
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return False
+
+
 def export_sample(db_path: str, csv_path: str, per_property: int = 300,
                   sample_db_path: str | None = "data/sample/reviews_sample.db") -> ExportResult:
-    if sample_db_path and Path(sample_db_path).resolve() == Path(db_path).resolve():
-        raise ValueError("the sample database must not be the live database")
+    if not isinstance(per_property, int) or not 1 <= per_property <= MAX_PER_PROPERTY:
+        raise ValueError(f"per_property must be between 1 and {MAX_PER_PROPERTY}")
+    if _same_file(csv_path, db_path):
+        raise ValueError("the CSV path is the live database: refusing to overwrite it")
+    if sample_db_path:
+        if _same_file(sample_db_path, db_path):
+            raise ValueError("the sample database must not be the live database")
+        if _same_file(sample_db_path, csv_path):
+            raise ValueError("the CSV and the sample database cannot be the same file")
+        if os.path.exists(sample_db_path) and not _is_previous_sample(sample_db_path):
+            raise ValueError(f"{sample_db_path} exists and is not a previous sample database; refusing to delete it")
 
     reviews = metrics.load_reviews(db_path)
     topics = metrics.load_topics(db_path)
@@ -102,9 +130,12 @@ def main() -> None:
     ap.add_argument("--db", default="data/reviews.db")
     ap.add_argument("--csv", default="data/sample_reviews.csv")
     ap.add_argument("--sample-db", default="data/sample/reviews_sample.db")
-    ap.add_argument("--per-property", type=int, default=300)
+    ap.add_argument("--per-property", type=int, default=300, help=f"1 to {MAX_PER_PROPERTY}")
     args = ap.parse_args()
-    out = export_sample(args.db, args.csv, args.per_property, args.sample_db)
+    try:
+        out = export_sample(args.db, args.csv, args.per_property, args.sample_db)
+    except ValueError as exc:
+        ap.error(str(exc))
     for slug, n in out.per_property.items():
         print(f"{slug}: {n} reviews exported" + ("  <-- NO DATA" if n == 0 else ""))
     print(f"Wrote {out.csv_path} and {out.sample_db_path}")

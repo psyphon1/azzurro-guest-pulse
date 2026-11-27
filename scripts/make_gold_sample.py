@@ -70,6 +70,8 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", default="data/raw/gold_sample.json")
     args = ap.parse_args()
+    if not args.out.lower().endswith(".json"):
+        ap.error("--out must be a .json file (refusing to write over anything else)")
     sample = sample_reviews(args.db, args.n, args.seed)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(sample, indent=1, ensure_ascii=False))
