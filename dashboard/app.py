@@ -18,11 +18,8 @@ import streamlit as st  # noqa: E402
 from dashboard.ui import data as D  # noqa: E402
 from dashboard.ui.style import CSS, esc  # noqa: E402
 
-st.set_page_config(page_title="Azzurro Review Insights", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="Azzurro Review Insights", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(CSS, unsafe_allow_html=True)
-st.title("Azzurro Hotels: guest review insights")
-st.markdown('<div class="az-sub">What guests said on Booking.com, week by week.</div>',
-            unsafe_allow_html=True)
 
 log = logging.getLogger("azzurro.dashboard")
 FRIENDLY_CRASH = ("Something went wrong while building this page, so it could not be shown. "
@@ -30,7 +27,7 @@ FRIENDLY_CRASH = ("Something went wrong while building this page, so it could no
 
 try:
     from insights import metrics as m  # noqa: E402
-    from dashboard.ui import sections as S  # noqa: E402
+    from dashboard.ui import views as V  # noqa: E402
 except ImportError:
     log.exception("dashboard modules could not be imported")
     st.error("The review analysis module is not available yet, so the dashboard cannot show numbers.")
@@ -60,130 +57,113 @@ except Exception:  # unreadable, corrupt or half-built file: say so politely; th
                "or still being created. Please try again in a minute.")
     st.stop()
 
+def _apply_filters() -> None:
+    """Apply filters button: copy the filter-bar widgets into the applied filters and the URL."""
+    ss = st.session_state
+    custom = ss.get("f_custom")
+    custom = tuple(custom) if isinstance(custom, (tuple, list)) and len(custom) == 2 else None
+    ss["applied"] = {"period": ss.get("f_period", D.DEFAULT_PERIOD), "names": list(ss.get("f_hotels") or []),
+                     "custom": custom}
+    ss["feed_page"] = 1
+
+
+def _clear_filters() -> None:
+    """Clear filters button: back to the default view, everywhere (filter bar, feed, URL)."""
+    ss = st.session_state
+    ss["f_period"], ss["f_hotels"] = D.DEFAULT_PERIOD, []
+    ss["applied"] = {"period": D.DEFAULT_PERIOD, "names": [], "custom": None}
+    for key, value in (("feed_pills", []), ("feed_topic", ""), ("feed_search", ""), ("feed_hotel", None),
+                       ("feed_page", 1)):
+        ss[key] = value
+
+
+def _open_in_feed(action: dict) -> None:
+    st.session_state["feed_preset"] = action
+
+
 def render_dashboard(db_path, bundle) -> None:
     today = D.today_sydney()      # one reading of the Sydney clock for the whole run
     df_all, skipped = D.clean_reviews(bundle.reviews, today)
     topics_all, health = D.clean_topics(bundle.topics, df_all), bundle.health
-    if D.is_sample(db_path):     # a snapshot must never be mistaken for live data: say so above everything else
-        S.html(f'<div class="az-banner-demo">{esc(D.sample_banner_text(health))}</div>')
     no_data = D.hotels_without_reviews(health, df_all)     # hotels with no usable review at all (e.g. blocked)
-    S.render_banner(db_path, health, no_data)
-    S.render_skipped(skipped)
-    # Disclosure only (the other module may not have this yet): groups of reviews that share a score and text.
     repeated = m.repeated_reviews(df_all) if hasattr(m, "repeated_reviews") and not df_all.empty else None
+    slug_by_name = {p.name: p.slug for p in PROPERTIES}
+    if not df_all.empty:
+        slug_by_name.update(dict(zip(df_all["property_name"], df_all["property"])))
+    present = set(df_all["property_name"]) if not df_all.empty else set()
+    all_names = [p.name for p in PROPERTIES] + sorted(present - {p.name for p in PROPERTIES})
+    all_slugs = [slug_by_name[n] for n in all_names]
+    name_by_slug = {v: k for k, v in slug_by_name.items()}
+
+    V.render_header(db_path, health, no_data, skipped, repeated, len(PROPERTIES))
+
+    # Applied filters: from the URL on the first visit, then only changed by the Apply / Clear buttons.
+    ss = st.session_state
+    if "applied" not in ss:
+        period, slugs, custom = D.parse_query(dict(st.query_params), all_slugs)
+        names = [name_by_slug[s] for s in slugs] if slugs else []
+        ss["applied"] = {"period": period, "names": names, "custom": custom}
+        ss["f_period"], ss["f_hotels"] = period, names
+        if custom:
+            ss["f_custom"] = custom
+    if "f_custom" not in ss:
+        ss["f_custom"] = (D.monday_of(today), today)
+    V.render_filter_bar(all_names, _apply_filters, _clear_filters, today)
+    applied = ss["applied"]
+    period = applied["period"] if applied.get("period") in D.PERIODS else D.DEFAULT_PERIOD
+    sel_names = [n for n in applied.get("names") or [] if n in all_names] or all_names
+    sel_slugs = [slug_by_name.get(n, n) for n in sel_names]
+    st.query_params.from_dict(D.to_query(period, sel_slugs, all_slugs, applied.get("custom")))
 
     if df_all.empty:
         st.info("There are no reviews in the database yet. Run the review collection first "
                 "(python -m scraper.run --property all --mode full), then refresh this page.")
-        S.render_health(health, None, {}, {}, repeated)
-        S.render_howto()
+        V.render_health_table(health)
+        V.render_howto()
         st.stop()
-
-    # --- sidebar filters ----------------------------------------------------------------------------
-    slug_by_name = {**dict(zip(df_all["property_name"], df_all["property"])), **{p.name: p.slug for p in PROPERTIES}}
-    present = set(df_all["property_name"])
-    # Every configured hotel is listed, even one with no reviews: it must never silently disappear.
-    all_names = [p.name for p in PROPERTIES] + sorted(present - {p.name for p in PROPERTIES})
-    with st.sidebar:
-        st.header("Filters")
-        sel_names = st.multiselect("Hotels", all_names, default=all_names, key="props",
-                                   help="Pick one or more hotels. Everything on the page follows this choice.")
-        preset = st.selectbox("Time period", D.PRESETS, index=0, key="range_preset",
-                              help="Weeks run Monday to Sunday (Sydney time). The default is the latest finished week.")
 
     first, last = df_all["review_date"].min().date(), df_all["review_date"].max().date()
-    try:
-        latest_week = m.latest_complete_week(df_all, today)
-    except Exception:
-        latest_week = None
-    if latest_week is None or pd.isna(latest_week):
-        latest_week = D.monday_of(last) - timedelta(days=7)
-
-    custom = None
-    if preset == "Custom dates":
-        with st.sidebar:
-            picked = st.date_input("From and to", value=(latest_week, latest_week + timedelta(days=6)), key="custom_range")
-        custom = tuple(picked) if isinstance(picked, (tuple, list)) and len(picked) == 2 else None
-        if custom is None:
-            st.info("Pick both a start and an end date in the sidebar.")
-            st.stop()
-    start, end, focus = D.preset_range(preset, latest_week, today, first, last, custom)
-    with st.sidebar:
-        st.caption(f"Showing {D.nice_range(start, end)}.")
-        st.caption(f"Data file: {esc(db_path.name)}")
-
-    if not sel_names:
-        st.info("Choose at least one hotel in the sidebar.")
-        st.stop()
-
-    sel_slugs = [slug_by_name.get(n, n) for n in sel_names]
-    sel_nodata = {slug: nd for slug, nd in no_data.items() if slug in sel_slugs}
+    start, end, focus = D.period_range(period, today, first, last, applied.get("custom"))
+    sel_nodata = {s: nd for s, nd in no_data.items() if s in sel_slugs}
     nodata_names = [nd.name for nd in sel_nodata.values()]
-    df = df_all[df_all["property_name"].isin(sel_names)]
+    df = df_all[df_all["property"].isin(sel_slugs)]
     topics = topics_all[topics_all["review_key"].isin(df["review_key"])] if not topics_all.empty else topics_all
     topics_ready = not topics_all.empty
-
-    if df.empty:     # only hotels without any reviews are selected
-        many = len(sel_nodata) != 1
-        st.info(f"No reviews have been collected for the selected hotel{'s' if many else ''} yet, so there are no "
-                "scores, trends or topics to show. The card below says why. Select another hotel in the sidebar to see its reviews.")
-        S.render_properties(None, {}, topics_ready, sel_nodata, sel_slugs)
-        S.render_health(health, None, {}, {}, repeated)
-        S.render_howto()
-        st.stop()
-    S.render_data_age(df["review_date"].max().date(), today)
     labels = D.topic_labels()
-    df_range = df[(df["review_date"] >= pd.Timestamp(start)) & (df["review_date"] <= pd.Timestamp(end))]
 
-    if df_range.empty:
-        st.info(f"No reviews between {D.nice_range(start, end)} for the selected hotels. "
-                "Try a longer time period (for example Last 12 weeks or All time) or select more hotels.")
-        S.render_health(health, None, {}, {}, repeated)
-        S.render_howto()
+    # --- overview -------------------------------------------------------------------------------------------
+    st.header(D.period_label(period, start, end, today), anchor="overview")
+    if df.empty:
+        st.info("No reviews have been collected for the selected hotels yet. Choose another hotel above.")
+        V.render_hotels([], sel_nodata, sel_slugs)
+        V.render_health_table(health)
+        V.render_howto()
         st.stop()
+    newest = df["review_date"].max().date()
+    if (today - newest).days >= 7:
+        st.warning(f"The newest review in this data is from {D.short_day(newest)} {newest.year}, "
+                   f"{(today - newest).days} days ago. Pick an earlier period or All time to see reviews.")
+    covered = sorted(set(sel_slugs) - set(sel_nodata))
+    if nodata_names:
+        st.caption(f"Based on {len(covered)} of {len(sel_slugs)} hotels. Not included: "
+                   f"{', '.join(nodata_names)} (no reviews collected yet).")
+    V.render_kpis(D.kpis(df, start, end, today))
+    df_range = df[(df["review_date"] >= pd.Timestamp(start)) & (df["review_date"] <= pd.Timestamp(end))]
+    V.render_worth_a_look(m.generate_insights(df, topics, focus), _open_in_feed)
 
-    lab = D.week_labels(focus, today)
-    week_label = D.nice_range(focus, focus + timedelta(days=6))
-    if lab.current:
-        week_label += " (week not finished)"
-
-    # --- 2-4: the focus week ------------------------------------------------------------------------
-    breakdown = m.property_breakdown(df, focus)
-    if breakdown is not None and not breakdown.empty:
-        breakdown = breakdown[breakdown["property"].isin(sel_slugs)]
-    coverage = S.coverage_text(list(zip(sel_slugs, sel_names)), breakdown, no_data, lab.in_week)
-    S.render_week_header(week_label, coverage, lab)
-    if start < focus or end > focus + timedelta(days=6):
-        st.caption(f"Trends, topics and the review feed further down cover {D.nice_range(start, end)}.")
-    S.render_kpis(m.compare_weeks(df, focus), lab)
-    if not lab.current:
-        S.render_week_so_far(m.week_summary(df, D.monday_of(today)), m.week_summary(df, focus), today, focus)
-    S.render_insights(m.generate_insights(df, topics, focus), week_label, coverage, lab)
-
-    top_complaint: dict = {}
-    if topics_ready and breakdown is not None:
-        for r in breakdown.itertuples(index=False):
-            if int(r.n) == 0:
-                continue
-            ts = m.topic_shares(df, topics, focus, focus + timedelta(days=6), polarity="negative", properties=[r.property])
-            extra = S.no_comment_count(ts)
-            ts = ts[ts["count"] > 0] if ts is not None and not ts.empty else ts
-            if ts is not None and not ts.empty:
-                top = ts.sort_values("count", ascending=False).iloc[0]
-                top_complaint[r.property] = (f"{top['label']} ({int(top['count'])} of {int(top['n_reviews'])} "
-                                             f"negative reviews with a comment)", extra)
-    S.render_properties(breakdown, top_complaint, topics_ready, sel_nodata, sel_slugs, lab)
-
-    # --- 5-6: range-wide views ----------------------------------------------------------------------
+    # --- hotels, trends, topics -----------------------------------------------------------------------------
+    rows = D.hotel_rows(df, topics, [s for s in sel_slugs if s not in sel_nodata], name_by_slug, start, end, labels)
+    V.render_hotels(rows, sel_nodata, sel_slugs)
     trend_start = min(start, D.monday_of(end) - timedelta(weeks=7))
-    S.render_trends(m.weekly_trend(df, trend_start, end), trend_start, end, nodata_names)
-    S.render_topics(df, topics, start, end, sel_names, sel_slugs, topics_ready, db_path, nodata_names)
+    V.render_trends(m.weekly_trend(df, trend_start, end), nodata_names)
+    V.render_topics(df, topics, start, end, [(s, name_by_slug.get(s, s)) for s in covered], topics_ready,
+                    nodata_names)
 
-    # --- 7-9: feed, health, help --------------------------------------------------------------------
+    # --- feed, health, help ---------------------------------------------------------------------------------
     chips = D.topic_chips(topics)
-    feed_df = S.render_feed(df_range, chips, labels, topics_ready, nodata_names)
-    S.render_health(health, feed_df, chips, labels, repeated)
-    S.render_howto()
+    V.render_feed(df_range, chips, labels, topics_ready, set(sel_slugs), name_by_slug)
+    V.render_health_table(health)
+    V.render_howto()
 
 
 try:

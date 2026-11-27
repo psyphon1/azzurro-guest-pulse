@@ -13,7 +13,7 @@ from insights.pipeline import classify_all
 from scraper.config import PROPERTIES
 from scraper.models import Review
 from scraper.store import ReviewStore
-from tests.test_dashboard_smoke import APP, page_text
+from tests.test_dashboard_smoke import APP, page_text, pick
 
 HOTEL = PROPERTIES[0].slug
 TODAY = date(2026, 11, 25)
@@ -172,6 +172,6 @@ def test_notice_survives_a_metrics_module_without_the_function(monkeypatch, tmp_
 
 def test_notice_is_shown_even_when_the_chosen_period_is_empty(monkeypatch, tmp_path):
     at = run(monkeypatch, build(tmp_path / "reviews.db", recent_specs() + repeat_specs()))
-    at.sidebar.selectbox(key="range_preset").select("This week so far").run()
+    pick(at, period="This week so far")
     assert "No reviews between" in page_text(at)
     assert len(notices(at)) == 1

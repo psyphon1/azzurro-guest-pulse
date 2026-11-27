@@ -414,3 +414,206 @@ def hotels_without_reviews(health: pd.DataFrame | None, reviews: pd.DataFrame | 
         reason, detail = no_data_reason(status, r.latest_error, stored)
         out[r.property] = NoData(r.property, r.property_name, reason, detail)
     return out
+
+
+# --- top filter bar (polish pass) ----------------------------------------------------------------------------------
+PERIODS = ["This week", "Last week", "Last 30 days", "All time", "Custom"]
+DEFAULT_PERIOD = "This week"
+SMALL_SAMPLE = 10            # below this many reviews a number gets a "Small sample" badge
+
+
+def period_range(period: str, today: date, first: date, last: date,
+                 custom: tuple[date, date] | None = None) -> tuple[date, date, date]:
+    """(start, end, focus Monday) for a filter-bar period. The focus week is what "Worth a look" describes."""
+    this_monday = monday_of(today)
+    if period == "Last week":
+        w = this_monday - timedelta(days=7)
+        return w, w + timedelta(days=6), w
+    if period == "Last 30 days":
+        return today - timedelta(days=29), today, this_monday
+    if period == "All time":
+        return min(first, today), max(last, today), monday_of(min(last, today))
+    if period == "Custom" and custom:
+        s, e = sorted(custom)
+        return s, e, monday_of(min(e, today, max(last, s)))
+    return this_monday, today, this_monday                   # This week (so far): the default
+
+
+def previous_range(start: date, end: date) -> tuple[date, date]:
+    """The window of the same length just before [start, end], for "vs previous" deltas."""
+    days = (end - start).days + 1
+    return start - timedelta(days=days), start - timedelta(days=1)
+
+
+def period_label(period: str, start: date, end: date, today: date) -> str:
+    if period == "This week":
+        return f"This week so far, {short_day(start)} to today"
+    if period == "Last week":
+        return f"Last week, {nice_range(start, end)}"
+    if period == "Last 30 days":
+        return f"Last 30 days, {short_day(start)} to today"
+    return nice_range(start, end)
+
+
+def parse_query(params: dict, valid_slugs: list[str]) -> tuple[str, list[str] | None, tuple[date, date] | None]:
+    """Filters from the URL (untrusted): unknown values are ignored, never trusted."""
+    def first(key):
+        v = params.get(key)
+        if isinstance(v, (list, tuple)):
+            v = v[0] if v else None
+        return str(v)[:200] if v is not None else None
+
+    period = first("period")
+    period = period if period in PERIODS else DEFAULT_PERIOD
+    raw = first("hotels")
+    slugs = None
+    if raw:
+        picked = [s for s in raw.split(",") if s in valid_slugs]
+        slugs = list(dict.fromkeys(picked)) or None
+    custom = None
+    try:
+        f, t = first("from"), first("to")
+        if f and t:
+            custom = (date.fromisoformat(f), date.fromisoformat(t))
+    except ValueError:
+        custom = None
+    return period, slugs, custom
+
+
+def to_query(period: str, slugs: list[str], all_slugs: list[str], custom: tuple[date, date] | None) -> dict[str, str]:
+    out = {"period": period}
+    if slugs and set(slugs) != set(all_slugs):
+        out["hotels"] = ",".join(slugs)
+    if period == "Custom" and custom:
+        out["from"], out["to"] = custom[0].isoformat(), custom[1].isoformat()
+    return out
+
+
+# --- KPI row -------------------------------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Kpi:
+    label: str
+    value: str
+    delta: float | None          # signed change vs the previous window, in the KPI's own unit
+    delta_text: str              # "Up 0.4 vs previous", "No comparison"
+    tone: str                    # "good" | "bad" | "flat"
+    caption: str
+    small: bool                  # small-sample badge
+
+
+def _window(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
+    return df[(df["review_date"] >= pd.Timestamp(start)) & (df["review_date"] <= pd.Timestamp(end))]
+
+
+def _delta(cur, prev, unit: str, up_is_good: bool, digits: int = 1) -> tuple[float | None, str, str]:
+    if cur is None or prev is None:
+        return None, "No comparison", "flat"
+    d = round(cur - prev, digits)
+    if abs(d) < 10 ** -digits / 2:
+        return 0.0, "No change vs previous", "flat"
+    word = "Up" if d > 0 else "Down"
+    amount = f"{abs(d):.{digits}f}" if digits else f"{abs(int(d))}"
+    tone = "good" if (d > 0) == up_is_good else "bad"
+    return d, f"{word} {amount}{unit} vs previous", tone
+
+
+def kpis(df: pd.DataFrame, start: date, end: date, today: date) -> list[Kpi]:
+    """The four numbers at the top: average score, review count, % negative, unanswered negatives (90 days)."""
+    ps, pe = previous_range(start, end)
+    cur, prev = _window(df, start, end), _window(df, ps, pe)
+    n, pn = len(cur), len(prev)
+    avg = round(float(cur["rating"].mean()), 1) if n else None
+    pavg = round(float(prev["rating"].mean()), 1) if pn else None
+    neg = round(100 * int((cur["band"] == "negative").sum()) / n) if n else None
+    pneg = round(100 * int((prev["band"] == "negative").sum()) / pn) if pn else None
+    d1, t1, c1 = _delta(avg, pavg, "", up_is_good=True)
+    d2, t2, c2 = _delta(n, pn, "", up_is_good=True, digits=0) if pn or n else (None, "No comparison", "flat")
+    d3, t3, c3 = _delta(neg, pneg, " pts", up_is_good=False, digits=0)
+    since = today - timedelta(days=90)
+    unanswered = df[(df["band"] == "negative") & (~df["has_reply"]) & (df["review_date"] >= pd.Timestamp(since))]
+    neg_n = int((cur["band"] == "negative").sum())
+    return [
+        Kpi("Average score", "–" if avg is None else f"{avg:.1f}", d1, t1, c1,
+            f"out of 10, from {n} review{'s' if n != 1 else ''}", 0 < n < SMALL_SAMPLE),
+        Kpi("Reviews", f"{n}", d2, t2, c2, f"previous period: {pn}", 0 < n < SMALL_SAMPLE),
+        Kpi("Negative", "–" if neg is None else f"{neg}%", d3, t3, c3,
+            f"{neg_n} of {n} scored under 5", 0 < n < SMALL_SAMPLE),
+        Kpi("Unanswered negatives", f"{len(unanswered)}", None, "Last 90 days", "flat",
+            "negative reviews with no hotel reply", False),
+    ]
+
+
+# --- hotel cards ---------------------------------------------------------------------------------------------------
+_SPARK = "▁▂▃▄▅▆▇█"
+
+
+def sparkline(values: list[float | None]) -> str:
+    """Weekly averages as block characters on the 1 to 10 scale ("·" for a week with no reviews)."""
+    out = []
+    for v in values:
+        if v is None or pd.isna(v):
+            out.append("·")
+        else:
+            out.append(_SPARK[min(len(_SPARK) - 1, max(0, int((float(v) - 1) / 9 * len(_SPARK))))])
+    return "".join(out)
+
+
+@dataclass(frozen=True)
+class HotelRow:
+    slug: str
+    name: str
+    n: int
+    avg: float | None
+    delta: float | None
+    prev_n: int
+    top_complaint: str | None
+    spark: str
+    spark_label: str
+
+
+def hotel_rows(df: pd.DataFrame, topics: pd.DataFrame, slugs: list[str], names: dict[str, str],
+               start: date, end: date, labels: dict[str, str]) -> list[HotelRow]:
+    ps, pe = previous_range(start, end)
+    weeks = [monday_of(end) - timedelta(weeks=i) for i in range(7, -1, -1)]
+    neg_tags = topics[topics["polarity"] == "negative"] if topics is not None and len(topics) else None
+    out = []
+    for slug in slugs:
+        h = df[df["property"] == slug]
+        cur, prev = _window(h, start, end), _window(h, ps, pe)
+        avg = round(float(cur["rating"].mean()), 1) if len(cur) else None
+        pavg = round(float(prev["rating"].mean()), 1) if len(prev) else None
+        top = None
+        if neg_tags is not None and len(cur):
+            c = neg_tags[neg_tags["review_key"].isin(cur["review_key"])].groupby("topic")["review_key"].nunique()
+            if len(c):
+                tid = c.sort_values(ascending=False).index[0]
+                top = f"{labels.get(tid, tid)} ({int(c[tid])})"
+        vals = []
+        for w in weeks:
+            wk = _window(h, w, w + timedelta(days=6))
+            vals.append(round(float(wk["rating"].mean()), 1) if len(wk) else None)
+        spoken = ", ".join("none" if v is None else f"{v:.1f}" for v in vals)
+        out.append(HotelRow(slug, names.get(slug, slug), len(cur), avg,
+                            None if avg is None or pavg is None else round(avg - pavg, 1), len(prev), top,
+                            sparkline(vals), f"Weekly average score, last 8 weeks: {spoken}"))
+    return out
+
+
+# --- feed presets from "Worth a look" ------------------------------------------------------------------------------
+QUICK_FILTERS = ["Negative", "Needs reply", "Has comment", "Safety"]
+_PRESET_TO_PILL = {"neg": "Negative", "noreply": "Needs reply", "text": "Has comment", "safety": "Safety"}
+
+
+def apply_preset(preset, valid_topics: set[str], valid_slugs: set[str]) -> tuple[list[str], str, str | None]:
+    """A "Worth a look" action -> (quick filter pills, topic choice, hotel slug). Unknown values are dropped."""
+    if not isinstance(preset, dict):
+        return [], "", None
+    pills = [pill for key, pill in _PRESET_TO_PILL.items() if preset.get(key) is True]
+    topic = preset.get("topic") if isinstance(preset.get("topic"), str) else ""
+    parsed = parse_topic_choice(topic, {t: t for t in valid_topics})
+    slug = preset.get("property") if preset.get("property") in valid_slugs else None
+    return pills, (topic if parsed else ""), slug
+
+
+def safety_keys(chips: dict) -> set[str]:
+    return {k for k, tags in chips.items() if any(t == "safety" and p == "negative" for t, p, _ in tags)}

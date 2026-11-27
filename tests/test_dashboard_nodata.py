@@ -10,6 +10,8 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
+from tests.test_dashboard_smoke import pick
+
 from scraper.config import PROPERTIES
 from scraper.store import ReviewStore
 from scripts.make_demo_db import make
@@ -52,8 +54,8 @@ def db(tmp_path):
 def test_no_exception_and_all_four_hotels_selectable(monkeypatch, db):
     at = run_app(monkeypatch, db)
     assert not at.exception, [e.value for e in at.exception]
-    assert [p.name for p in PROPERTIES] == list(at.sidebar.multiselect(key="props").options)
-    assert len(at.sidebar.multiselect(key="props").value) == 4
+    assert [p.name for p in PROPERTIES] == list(at.multiselect(key="f_hotels").options)
+    assert len(at.multiselect(key="f_hotels").value) == 4
 
 
 def test_hotel_card_for_hotel_without_reviews(monkeypatch, db):
@@ -98,7 +100,7 @@ def test_portfolio_numbers_say_how_many_hotels(monkeypatch, db):
 
 def test_only_the_empty_hotel_selected_gives_friendly_state(monkeypatch, db):
     at = run_app(monkeypatch, db)
-    at.sidebar.multiselect(key="props").set_value(["Central Sydney"]).run()
+    pick(at, hotels=["Central Sydney"])
     assert not at.exception, [e.value for e in at.exception]
     text = page_text(at)
     assert "No reviews collected for this hotel yet" in text

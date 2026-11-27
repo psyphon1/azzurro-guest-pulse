@@ -56,3 +56,18 @@ def mask_pii(text):
 def looks_like_pii(text: str) -> bool:
     """True if masking would change `text`: used to refuse searches for an email address or phone number."""
     return isinstance(text, str) and mask_pii(text) != text
+
+
+# Strong language, masked in one-line previews only ("f***"); the expanded review shows the guest's own words.
+_PROFANITY = ("fuck", "fucking", "fucked", "fucker", "shit", "shitty", "bullshit", "crap", "crappy", "bitch",
+              "bastard", "asshole", "arsehole", "dick", "piss", "pissed", "cunt", "wanker", "bloody", "damn",
+              "merde", "putain", "mierda", "joder", "scheisse", "scheiße", "cazzo", "merda", "porra", "caralho")
+_PROFANITY_RE = re.compile(r"(?<!\w)(" + "|".join(sorted(map(re.escape, _PROFANITY), key=len, reverse=True)) + r")(?!\w)",
+                           re.IGNORECASE)
+
+
+def mask_profanity(text):
+    """'This shitty place' -> 'This s***** place'. Whole words only, case-insensitive."""
+    if not isinstance(text, str):
+        return text
+    return _PROFANITY_RE.sub(lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1), text)

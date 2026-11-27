@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from tests.test_dashboard_smoke import APP, build_db, page_text, run_app  # noqa: E402
+from tests.test_dashboard_smoke import pick
 
 # ----------------------------------------------------------------------------- payloads
 PAYLOAD = (
@@ -123,7 +124,7 @@ def poison(db: Path, payload: str = PAYLOAD) -> None:
 
 
 def all_time(at):
-    at.sidebar.selectbox(key="range_preset").select("All time").run()
+    pick(at, period="All time")
     return at
 
 
@@ -434,7 +435,7 @@ def test_tampered_hotel_selection_outside_the_whitelist_is_ignored(monkeypatch, 
 ])
 def test_absurd_or_inverted_custom_date_range_is_fast_and_friendly(monkeypatch, tmp_path, picked):
     at = run_app(monkeypatch, build_db(tmp_path / "reviews.db"))
-    at.sidebar.selectbox(key="range_preset").select("Custom dates").run()
+    pick(at, period="Custom dates")
     t0 = time.perf_counter()
     at.session_state["custom_range"] = picked
     at.run()

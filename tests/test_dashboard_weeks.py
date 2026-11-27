@@ -13,7 +13,7 @@ import dashboard.ui.data as D
 from scraper.config import PROPERTIES
 from scraper.models import Review
 from scraper.store import ReviewStore
-from tests.test_dashboard_smoke import APP, page_text
+from tests.test_dashboard_smoke import APP, page_text, pick
 
 HOTEL = PROPERTIES[0].slug
 OTHER = PROPERTIES[1].slug
@@ -89,7 +89,7 @@ def test_newest_review_mid_week_uses_the_last_finished_week(monkeypatch, tmp_pat
 def test_this_week_so_far_preset_follows_the_sydney_clock(monkeypatch, tmp_path):
     rows = [(date(2026, 11, 18), 5.0), (date(2026, 11, 25), 7.0)]
     at = run_frozen(monkeypatch, build_db(tmp_path / "reviews.db", rows), date(2026, 11, 25))
-    at.sidebar.selectbox(key="range_preset").select("This week so far").run()
+    pick(at, period="This week so far")
     assert not at.exception, [e.value for e in at.exception]
     assert "Mon 23 Nov to Sun 29 Nov 2026" in page_text(at)
 
@@ -140,7 +140,7 @@ def test_no_small_sample_caution_when_the_part_week_has_enough_reviews(monkeypat
 
 def test_no_strip_when_the_focus_week_is_the_current_week(monkeypatch, tmp_path):
     at = run_frozen(monkeypatch, build_db(tmp_path / "reviews.db", LAST_WEEK_ROWS + THIS_WEEK_ROWS), date(2026, 11, 25))
-    at.sidebar.selectbox(key="range_preset").select("This week so far").run()
+    pick(at, period="This week so far")
     assert not at.exception, [e.value for e in at.exception]
     text = page_text(at)
     assert "to today)" not in text
@@ -158,7 +158,7 @@ def test_strip_counts_only_the_selected_hotels(monkeypatch, tmp_path):
     rows = LAST_WEEK_ROWS + [(d, r, OTHER) for d, r in THIS_WEEK_ROWS]
     at = run_frozen(monkeypatch, build_db(tmp_path / "reviews.db", rows), date(2026, 11, 25))
     assert "to today)" in page_text(at)
-    at.sidebar.multiselect(key="props").set_value([PROPERTIES[0].name]).run()
+    pick(at, hotels=[PROPERTIES[0].name])
     assert not at.exception, [e.value for e in at.exception]
     assert "to today)" not in page_text(at)
 

@@ -7,7 +7,7 @@ enableCORS = true                 # only same-origin pages may talk to the serve
 headless = true                   # never try to open a browser or ask for an email address
 runOnSave = false                 # no automatic re-run when files change on a server
 fileWatcherType = "none"          # not needed in production, and one less thing reading the disk
-enableStaticServing = false       # do not serve files out of an ./app/static folder
+enableStaticServing = true        # serves dashboard/static (only the self-hosted Inter font) at /app/static
 maxMessageSize = 50               # MB: bounds what one page update may weigh
 
 [browser]
@@ -27,8 +27,8 @@ level = "warning"
 
 [theme]
 base = "light"
-primaryColor = "#1C6DB5"            # azure: selected hotels, toggles, focus
-backgroundColor = "#F3F6F8"
+primaryColor = "#1D64B0"            # azure: selected hotels, toggles, focus
+backgroundColor = "#F5F7F9"
 secondaryBackgroundColor = "#FFFFFF"
 textColor = "#13252F"
 font = "sans serif"

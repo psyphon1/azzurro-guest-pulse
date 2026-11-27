@@ -114,14 +114,14 @@ def test_empty_range_shows_empty_state(monkeypatch, tmp_path):
     at = AppTest.from_file(APP, default_timeout=60)
     at.run()
     assert not at.exception
-    at.sidebar.selectbox(key="range_preset").select("This week so far").run()
+    pick(at, period="This week so far")
     assert not at.exception, [e.value for e in at.exception]
     assert "No reviews between" in page_text(at)
 
 
 def test_no_hotel_selected_shows_hint(monkeypatch, demo_db):
     at = run_app(monkeypatch, demo_db)
-    at.sidebar.multiselect(key="props").set_value([]).run()
+    pick(at, hotels=[])
     assert not at.exception
     assert "Choose at least one hotel" in page_text(at)
 
@@ -129,7 +129,7 @@ def test_no_hotel_selected_shows_hint(monkeypatch, demo_db):
 def test_feed_never_mentions_reviewer_identity(monkeypatch, demo_db):
     at = run_app(monkeypatch, demo_db)
     assert not at.exception
-    at.sidebar.selectbox(key="range_preset").select("All time").run()
+    pick(at, period="All time")
     assert not at.exception
     text = page_text(at).lower()
     assert "az-review" in text  # the feed really rendered cards
@@ -144,7 +144,7 @@ def test_review_text_is_escaped(monkeypatch, tmp_path):
     con.commit()
     con.close()
     at = run_app(monkeypatch, db)
-    at.sidebar.selectbox(key="range_preset").select("All time").run()
+    pick(at, period="All time")
     assert not at.exception
     text = page_text(at)
     assert "<script>" not in text
@@ -153,7 +153,7 @@ def test_review_text_is_escaped(monkeypatch, tmp_path):
 
 def test_feed_filters_and_pagination_run(monkeypatch, demo_db):
     at = run_app(monkeypatch, demo_db)
-    at.sidebar.selectbox(key="range_preset").select("All time").run()
+    pick(at, period="All time")
     at.checkbox(key="feed_neg").check().run()
     assert not at.exception
     at.checkbox(key="feed_noreply").check().run()
@@ -175,7 +175,7 @@ def test_rating_only_reviews_get_compact_card_and_filter(monkeypatch, tmp_path):
     con.commit()
     con.close()
     at = run_app(monkeypatch, db)
-    at.sidebar.selectbox(key="range_preset").select("All time").run()
+    pick(at, period="All time")
     assert not at.exception, [e.value for e in at.exception]
     assert "Rating only, no written comment" in page_text(at)
     at.checkbox(key="feed_text").check().run()
@@ -191,7 +191,7 @@ def test_runs_with_topic_analysis_present(monkeypatch, demo_db):
     assert not at.exception, [e.value for e in at.exception]
     text = page_text(at)
     assert "Topic analysis has not been run yet" not in text
-    at.sidebar.selectbox(key="range_preset").select("Last 12 weeks").run()
+    pick(at, period="Last 12 weeks")
     at.radio(key="topic_view").set_value("Praise").run()
     assert not at.exception, [e.value for e in at.exception]
     assert "az-chip" in page_text(at)
@@ -224,3 +224,16 @@ def test_no_cap_note_when_nothing_was_truncated(demo_db, monkeypatch):
 
     assert not at.exception
     assert "page limit" not in page_text(at)
+
+PERIOD_ALIASES = {"This week so far": "This week", "Latest full week": "Last week", "Last 4 weeks": "Last 30 days",
+                  "Last 12 weeks": "All time", "Custom dates": "Custom"}
+
+
+def pick(at, period=None, hotels=None):
+    """Set the top filter bar and press Apply filters (the page only changes on Apply)."""
+    if period is not None:
+        at.radio(key="f_period").set_value(PERIOD_ALIASES.get(period, period))
+    if hotels is not None:
+        at.multiselect(key="f_hotels").set_value(hotels)
+    at.button(key="f_apply").click().run()
+    return at
