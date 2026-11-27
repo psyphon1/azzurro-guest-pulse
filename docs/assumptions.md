@@ -10,6 +10,6 @@ The brief leaves several things open. These are the choices made, so everyone re
 | Our average | Simple average of collected reviews | May differ from Booking.com's displayed score, which is weighted |
 | Positive review | Rating 8 or above | Reasonable "good" cut-off on a 10 point scale |
 | Mixed review | Rating 5 to 7.9 | |
-| Negative review | Rating below 5, or written complaint with a low rating | To be tuned after looking at real data |
+| Negative review | Rating below 5. Decided by the score alone, never by the text | Keeps one definition everywhere; thresholds are constants in `insights/metrics.py` and can be tuned. Written complaints inside higher-scoring reviews are still tagged by topic |
 | Small samples | Show the review count next to every percentage | One property gets few reviews a week; percentages can mislead |
 | Reviewer privacy | Do not store reviewer names | Personal data; not needed for operations insights |

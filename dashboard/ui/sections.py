@@ -225,7 +225,7 @@ def render_trends(trend: pd.DataFrame, start: date, end: date) -> None:
         fig.update_yaxes(range=[0, max(t["n"].max() * 4, 8)], showgrid=False, showticklabels=False,
                          title_text="", secondary_y=True)
         fig.update_xaxes(type="category", title_text="Week starting (Monday)")
-        st.plotly_chart(plotly_layout(fig), use_container_width=True)
+        st.plotly_chart(plotly_layout(fig), width="stretch")
         st.caption("Grey bars and the numbers on them show how many reviews each week's score is based on. Weeks with only a few reviews are less reliable.")
     with right:
         st.markdown("**Positive, mixed and negative reviews per week**")
@@ -241,7 +241,7 @@ def render_trends(trend: pd.DataFrame, start: date, end: date) -> None:
         fig.update_layout(barmode="stack")
         fig.update_xaxes(type="category", title_text="Week starting (Monday)")
         fig.update_yaxes(title_text="Number of reviews")
-        st.plotly_chart(plotly_layout(fig), use_container_width=True)
+        st.plotly_chart(plotly_layout(fig), width="stretch")
         st.caption("Colours also differ by pattern: solid = positive, diagonal lines = mixed, crosses = negative.")
 
 
@@ -272,7 +272,7 @@ def render_topics(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date
                                    text=labels, textposition="outside", cliponaxis=False,
                                    hovertemplate="%{y}<br>%{text}<extra></extra>"))
             fig.update_xaxes(title_text="Number of reviews mentioning it", range=[0, s["count"].max() * 2.3], dtick=1)
-            st.plotly_chart(plotly_layout(fig, 380), use_container_width=True)
+            st.plotly_chart(plotly_layout(fig, 380), width="stretch")
             st.caption(f"Each label reads \"X of Y {sent} reviews with a comment\": how many of the {sent} reviews that "
                        f"include written text mentioned the topic. One review can mention several topics.")
             extra = no_comment_count(shares)
@@ -295,7 +295,7 @@ def render_topics(df: pd.DataFrame, topics: pd.DataFrame, start: date, end: date
                                        hovertemplate="%{y}<br>%{x}: %{z} reviews<extra></extra>"))
             fig.update_xaxes(tickangle=-35)
             fig.update_yaxes(autorange="reversed")
-            st.plotly_chart(plotly_layout(fig, 380), use_container_width=True)
+            st.plotly_chart(plotly_layout(fig, 380), width="stretch")
             st.caption("Numbers are review counts. Darker means more reviews. Compare hotels with care: they receive different numbers of reviews.")
 
 
@@ -414,7 +414,7 @@ def render_health(health: pd.DataFrame, feed_df: pd.DataFrame | None, chips: dic
             "Coverage": [c if isinstance(c, str) and c else "All reviews Booking.com shows" for c in health["coverage_note"]],
             "Problem details": [plain_text(e) if isinstance(e, str) and e else "" for e in health["latest_error"]],
         })
-        st.dataframe(t, hide_index=True, use_container_width=True)
+        st.dataframe(t, hide_index=True, width="stretch")
     if feed_df is not None and len(feed_df):
         data, shown = D.feed_to_csv_limited(feed_df, chips, labels)
         if shown < len(feed_df):

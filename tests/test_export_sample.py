@@ -184,3 +184,22 @@ def test_tag_tables_in_the_sample_keep_their_primary_keys(src, tmp_path):
     pk_topics = [r[1] for r in con.execute("PRAGMA table_info(review_topics)") if r[5]]
     pk_state = [r[1] for r in con.execute("PRAGMA table_info(review_topics_state)") if r[5]]
     assert set(pk_topics) == {"review_key", "topic", "polarity"} and pk_state == ["review_key"]
+
+
+def test_the_sample_connection_is_opened_in_uri_mode_so_attach_works_on_every_python(src, tmp_path, monkeypatch):
+    # Found by the fresh-clone review: on Python 3.11 ATTACH with a file: URI fails unless the connection that runs
+    # it was opened with uri=True (3.13/3.15 are lenient). Assert the requirement itself, not the interpreter.
+    import scripts.export_sample as mod
+
+    real_connect, calls = sqlite3.connect, []
+
+    def spy(*args, **kwargs):
+        calls.append((args, kwargs))
+        return real_connect(*args, **kwargs)
+
+    monkeypatch.setattr(mod.sqlite3, "connect", spy)
+    mod.export_sample(src, str(tmp_path / "s.csv"), per_property=5, sample_db_path=str(tmp_path / "sample.db"))
+
+    uri_calls = [kw for args, kw in calls if str(args[0]).startswith("file:")]
+    assert uri_calls, "the sample database should be opened through a file: URI"
+    assert all(kw.get("uri") is True for kw in uri_calls)      # a file: URI without uri=True is a plain, wrong file name

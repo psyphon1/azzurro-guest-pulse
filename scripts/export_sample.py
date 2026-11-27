@@ -100,7 +100,9 @@ def _write_sample_db(src_path: str, dest_path: str, keys: list[str]) -> None:
     if os.path.exists(dest_path):
         os.remove(dest_path)
     ReviewStore(dest_path).close()                        # creates the current schema
-    con = sqlite3.connect(dest_path)
+    # uri=True is REQUIRED for ATTACH with a file: URI on older Pythons (3.11). The path is percent-encoded by as_uri(),
+    # so an odd file name cannot add URI parameters.
+    con = sqlite3.connect(Path(dest_path).resolve().as_uri() + "?mode=rw", uri=True)
     try:
         con.execute("ATTACH DATABASE ? AS src", (Path(src_path).resolve().as_uri() + "?mode=ro",))
     except sqlite3.OperationalError:

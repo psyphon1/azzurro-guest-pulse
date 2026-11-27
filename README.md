@@ -4,7 +4,7 @@ Collects public Booking.com guest reviews for four Azzurro Hotels properties and
 dashboard that operations staff can read on a Monday morning: how each hotel scored this week, what
 changed since last week, what guests keep complaining about, and which bad reviews still have no reply.
 
-| Property | Booking.com page |
+| Property | Booking.com page (also the `--property` value) |
 |---|---|
 | Olympic Hotel Paddington | olympic-paddington |
 | Potts Point | venus-potts-point-sydney |
@@ -17,7 +17,11 @@ is independent of how the reviews arrive.
 
 ## Quick start
 
-Developed and tested on Python 3.15 (3.11 or newer should work but is untested). Uses Chromium via Playwright.
+Developed on Python 3.15 and also tested on 3.13 (all tests pass on both). On Python 3.11 everything works except
+`scripts/export_sample.py` (3 of its tests fail), so use 3.13 or newer. Uses Chromium via Playwright. Run every command
+below from the project folder (the one containing this file): the dashboard reads `.streamlit/config.toml` from the
+folder you start it in. The commands are for macOS and Linux; on Windows activate the environment with
+`.venv\Scripts\activate`.
 
 ```bash
 python3 -m venv .venv
@@ -25,8 +29,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python -m playwright install chromium
 
-# 1. Collect reviews (opens a visible browser window; leave it alone while it runs.
-#    10 reviews per page with a 2-5 s pause: about 1.5 min for 133 reviews, about 5 min for 540)
+# 1. Collect reviews (opens a visible browser window; leave it alone while it runs).
+#    10 reviews per page with a 2-5 s pause: about 1.5 min for 133 reviews, about 5 min for 540.
+#    Between hotels it rests 60 to 120 s, and a hotel with a year of busy history can take 10+ minutes,
+#    so budget roughly half an hour for all four. To try one hotel first, use its slug from the table
+#    above, e.g. --property olympic-paddington
 python -m scraper.run --property all --mode full
 
 # 2. Tag reviews with topics
@@ -40,18 +47,21 @@ No internet or time to scrape? Try the dashboard on clearly labelled synthetic d
 
 ```bash
 python scripts/make_demo_db.py
-REVIEWS_DB=data/demo.db python -m insights.pipeline --db data/demo.db
+python -m insights.pipeline --db data/demo.db
 REVIEWS_DB=data/demo.db streamlit run dashboard/app.py     # shows a "DEMO DATA" banner
 ```
 
-Run the tests: `python -m pytest -q` (no network needed).
+Streamlit prints a local address (normally http://localhost:8501); open it in a browser. If the database file does not
+exist yet, the dashboard says so and shows these same commands instead of failing.
+
+Run the tests: `python -m pytest -q` (no network needed; about 885 tests, around 35 seconds).
 
 ### Keeping it up to date
 
 | When | Command | What it does |
 |---|---|---|
 | Daily | `python -m scraper.run --property all --mode incremental` | Reads newest reviews first and stops at the first page with nothing new. Usually 1 page per hotel (about 20 to 30 s each). |
-| Weekly | `python -m scraper.run --property all --mode full` | Re-reads up to the page limit (see below). Picks up edited reviews and new hotel replies on old reviews, flags reviews that disappeared, and checks the count against what Booking.com reports. |
+| Weekly | `python -m scraper.run --property all --mode full` | Re-reads newest first until the 365-day window or the page limit ends the run (see below). Picks up edited reviews and new hotel replies inside that range. It only flags reviews that disappeared and checks the count against what Booking.com reports when the run reaches the end of the list, which the default window normally prevents; add `--no-date-window` for that (slower). |
 | After either | `python -m insights.pipeline --db data/reviews.db` | Tags only new or changed reviews. Safe to run repeatedly. |
 
 Nothing schedules itself. Because a visible browser is needed (see limitations), the simplest setup is a
@@ -83,8 +93,8 @@ Environment variable `REVIEWS_DB` points the dashboard at a different database (
 | `insights/` | `topics.py` (taxonomy), `classify.py` (keyword classifier), `pipeline.py` (writes `review_topics`), `metrics.py` (all numbers the dashboard shows) |
 | `dashboard/` | Streamlit UI only. It calls `insights.metrics` and never recomputes a metric itself. |
 | `tests/` | Offline tests on saved, anonymised fixtures. |
-| `docs/` | `assumptions.md` (definitions), `contracts.md` (module interfaces), `evaluation.md` (classifier accuracy), `adr/` (decisions) |
-| `scripts/` | `make_demo_db.py`, `evaluate_classifier.py`, and `spike_*.py` (throwaway investigation scripts, kept as a record, not product code) |
+| `docs/` | `assumptions.md` (definitions), `contracts.md` (module interfaces), `evaluation.md` (classifier accuracy), `adr/` (decisions), `security/` (red-team findings), `requirements-traceability.md` (requirement-by-requirement status and open gaps) |
+| `scripts/` | `make_demo_db.py` (synthetic demo data), `evaluate_classifier.py` (score the classifier), `make_gold_sample.py` and `export_sample.py` (see Sample data), and `spike_*.py` (throwaway investigation scripts, kept as a record, not product code) |
 
 Design choices worth knowing:
 
@@ -118,15 +128,15 @@ on the live page. Details and the reasoning are in `docs/adr/001-collection-meth
 
 | Risk | Control |
 |---|---|
-| Duplicates | Booking.com's review ID is the primary key. Re-running changes nothing (verified live: second run, 0 new, 0 duplicates). |
+| Duplicates | Booking.com's review ID is the primary key. Re-running changes nothing (test `test_saving_the_same_reviews_twice_creates_no_duplicates`; a live repeat run is not recorded in this repository). |
 | Edited reviews, new hotel replies | Content hash per review. A changed hash updates the row, keeps `first_seen`, and counts as `updated`. |
 | Layout or API change | Parser raises `ParseError("layout probably changed")` instead of returning "no reviews". The run is recorded as `failed` with that message. |
 | One bad review | Fails validation (rating outside 1 to 10, bad date, missing ID): goes to a `quarantine` table with the reason. The rest of the page is kept. |
-| Silent partial collection | After a full run, the number collected is compared with the total Booking.com reports. A gap above 10% sets a `DRIFT` flag and a non-zero exit code. |
+| Silent partial collection | After a full run that reads to the end of the list (or to the page cap), the number collected is compared with the total Booking.com reports. A gap above 10% sets a `DRIFT` flag and a non-zero exit code. This check is skipped when the 365-day window ends the run, because the grand total says nothing about a one-year window. A "Next page" button that vanishes early is caught separately and recorded as `blocked`. |
 | Blocking | A 400/403/429 or non-JSON reply raises `BlockedError`. The run stops for that hotel (no retry loop) and is recorded as `blocked`. |
 | One hotel failing | Failures are recorded, not raised. The other hotels still run. |
 | Process killed mid-run | The next run closes stale `running` entries as `interrupted`. Ctrl+C is recorded too. Pages already saved are kept. |
-| Reviews removed from Booking | Flagged with `missing_since` after a full run, never deleted. |
+| Reviews removed from Booking | Flagged with `missing_since` after a full run that reached the end of the list, never deleted. Not done for runs ended by the date window or the page cap. |
 | Stale data shown as fresh | The dashboard shows last successful update per hotel and warns after 48 hours or on a failed/blocked run. |
 
 ### Date window and page limit
@@ -169,6 +179,15 @@ Azzurro owns these properties, so the reviews already belong to Azzurro. The Boo
 export them, and Booking.com connectivity partners (channel managers) offer a review feed. Because
 fetching is isolated in `scraper/browser.py`, swapping it for a CSV import or an API client does not
 change storage, insights or the dashboard.
+
+### Sample data
+
+After a real collection and the pipeline step, `python scripts/export_sample.py --per-property 300` writes
+`data/sample_reviews.csv` (newest 300 reviews per hotel, readable in Excel, no reviewer identity, e-mail addresses and
+phone numbers masked) and `data/sample/reviews_sample.db` (the same reviews with topic tags, so the dashboard can be
+shown without scraping: `REVIEWS_DB=data/sample/reviews_sample.db streamlit run dashboard/app.py`). It opens the live
+database read-only and refuses to overwrite it. These two files are the only data files meant to be committed; the live
+database is git-ignored. Needs Python 3.13 or newer (see Quick start).
 
 ## Insights
 
@@ -221,6 +240,7 @@ Definitions are in `docs/assumptions.md`:
 
 ## Dashboard
 
+Hotel and time-period filters (latest full week, last week, last 4 or 12 weeks, custom dates) are in the sidebar.
 For a non-technical reader, top to bottom: data freshness, "this week at a glance" (plain-English
 insights, most important first), guest score against last week, a card per hotel, weekly trends of score
 and of positive/mixed/negative counts, top complaint (or praise) topics with a hotel-by-topic grid, then
