@@ -83,6 +83,39 @@ def render_header(db_path: Path, health: pd.DataFrame | None, no_data: dict, ski
         render_fetch(db_path)
 
 
+def render_health_details(health: pd.DataFrame | None, no_data: dict, skipped: int,
+                          repeated: pd.DataFrame | None) -> None:
+    if health is None or health.empty:
+        st.write("No update history yet.")
+        return
+    ok = pd.to_datetime(health["last_ok_at"], utc=True, errors="coerce").max()
+    st.markdown(f"**Last successful update:** {esc(D.to_sydney(ok)) if pd.notna(ok) else 'never'} (Sydney)")
+    lines = [f"{nd.name}: no reviews collected yet. {nd.reason}" for nd in no_data.values()]
+    for r in health.itertuples(index=False):
+        if r.property in no_data:
+            continue
+        if r.latest_status == "blocked":
+            lines.append(f"{r.property_name}: Booking.com blocked the last check; recent reviews may be missing.")
+        elif r.latest_status == "failed":
+            lines.append(f"{r.property_name}: the last update failed; recent reviews may be missing.")
+        if bool(r.stale):
+            lines.append(f"{r.property_name}: no successful update for more than 48 hours.")
+        if isinstance(r.coverage_note, str) and r.coverage_note:
+            lines.append(f"{r.property_name}: only part of the history is collected. {r.coverage_note}")
+    if skipped:
+        lines.append(f"{skipped:,} stored reviews were skipped (unreadable date or score).")
+    if repeated is not None and not repeated.empty:
+        for r in repeated.head(3).itertuples(index=False):
+            lines.append(f"{int(r.n)} reviews at {r.property_name} share the same score and text; they are counted.")
+    if lines:
+        html('<ul class="az-list">' + "".join(f"<li>{esc(x)}</li>" for x in lines) + "</ul>")
+    else:
+        st.write("All hotels are up to date.")
+
+
+# --- filter bar --------------------------------------------------------------------------------------------------
+
+
 def _start_fetch(db_path: Path) -> None:
     from dashboard.ui import collect
     ok, msg = collect.start(db_path)
