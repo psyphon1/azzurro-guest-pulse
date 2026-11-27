@@ -40,6 +40,12 @@ h2 {{ border-bottom: 2px solid {LINE}; padding-bottom: .3rem; margin-top: 1.6rem
 .az-fresh b {{ color: {INK}; }}
 .az-card {{ background: {CARD}; border: 1px solid {LINE}; border-radius: 12px; padding: .9rem 1rem; height: 100%;
   box-shadow: 0 1px 0 rgba(0,0,0,.03); }}
+/* Make cards in one row the same height: Streamlit's column wrappers must pass the height down. */
+[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
+[data-testid="stColumn"] > div, [data-testid="stColumn"] [data-testid="stVerticalBlock"],
+[data-testid="stColumn"] [data-testid="stElementContainer"], [data-testid="stColumn"] [data-testid="stMarkdown"],
+[data-testid="stColumn"] [data-testid="stMarkdown"] > div,
+[data-testid="stColumn"] [data-testid="stMarkdownContainer"] {{ height: 100%; }}
 .az-label {{ font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: {MUTED} !important; font-weight: 600; }}
 .az-value {{ font-family: Georgia, serif; font-size: 2.2rem; line-height: 1.15; color: {INK}; margin: .15rem 0; }}
 .az-value small {{ font-size: .9rem; color: {MUTED}; font-family: system-ui, sans-serif; }}

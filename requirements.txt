@@ -1,8 +1,7 @@
-httpx
-selectolax
-pydantic
-tenacity
-streamlit
-pandas
-plotly
-pytest
+# Tested with Python 3.15 on macOS. Versions are the ones the test suite last passed with.
+playwright>=1.65
+pydantic>=2.14
+pandas>=3.1
+plotly>=7.2
+streamlit>=1.67
+pytest>=9.2
