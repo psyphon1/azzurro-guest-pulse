@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 
 LOCK = ROOT / "data" / ".collect.lock"
 STATUS = ROOT / "data" / ".collect.status.json"
-PAUSE_S = 60
+PAUSE_S = 8             # seconds between hotels (doubled at most); a latest-only fetch reads about one page each
 MAX_PAGES = 20           # safety cap for hotels we already have (10 reviews per page)
 FIRST_FETCH_PAGES = 1    # a hotel with no stored reviews: only the newest page
 
@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         for i, prop in enumerate(PROPERTIES):
             if i:   # same courtesy pause as scraper.run between hotels
                 wait = random.uniform(PAUSE_S, PAUSE_S * 2)
-                print(f"Resting {wait:.0f}s before the next hotel ...", flush=True)
+                print(f"Waiting {wait:.0f}s before the next hotel ...", flush=True)
                 time.sleep(wait)
             # One fresh process per hotel: each browser starts clean, whatever happened to the previous one.
             # Only the latest reviews: a hotel we already have stops at the first review it already stored (and never
