@@ -48,6 +48,10 @@ def main(argv: list[str] | None = None) -> int:
                       finished_at=datetime.now(timezone.utc).isoformat())
         print(f"[{time.strftime('%H:%M:%S')}] done (collector exit code {code})", flush=True)
         return 0
+    except KeyboardInterrupt:  # the dashboard's Stop button sends an interrupt; pages already saved are kept
+        _write_status(state="stopped", started_at=started, finished_at=datetime.now(timezone.utc).isoformat())
+        print(f"[{time.strftime('%H:%M:%S')}] stopped by the user", flush=True)
+        return 130
     except Exception as exc:  # recorded for the dashboard, then re-raised into the log
         _write_status(state="failed", started_at=started, error=f"{type(exc).__name__}: {exc}"[:300])
         raise

@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -86,6 +87,22 @@ def start(db_path: Path) -> tuple[bool, str]:
         subprocess.Popen([sys.executable, str(ROOT / "scripts" / "collect_latest.py"), "--db", str(db_path)],
                          cwd=str(ROOT), stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     return True, "Started."
+
+
+def stop() -> bool:
+    """Stop the running collection: an interrupt first (the run is recorded as stopped and the browser closes),
+    a hard stop if it is still running when Stop is pressed again."""
+    info = running()
+    if not info:
+        return False
+    pid = int(info["pid"])
+    already = status().get("state") == "stopping"
+    try:
+        os.killpg(os.getpgid(pid), signal.SIGTERM if already else signal.SIGINT)
+    except (OSError, ProcessLookupError):
+        return False
+    STATUS.write_text(json.dumps({**status(), "state": "stopping"}))
+    return True
 
 
 def log_tail(lines: int = 12) -> str:

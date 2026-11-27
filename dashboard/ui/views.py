@@ -87,73 +87,53 @@ def _start_fetch(db_path: Path) -> None:
     from dashboard.ui import collect
     ok, msg = collect.start(db_path)
     st.session_state["fetch_msg"] = (ok, msg)
+    st.session_state["fetch_watching"] = ok
 
 
-@st.fragment(run_every=5)
+def _stop_fetch() -> None:
+    from dashboard.ui import collect
+    collect.stop()
+
+
+@st.fragment(run_every=3)
 def _fetch_progress() -> None:
-    """While a collection runs, check every 5 seconds; reload the whole page when it has finished."""
+    """While a collection runs: a loading line and a Stop button, checked every 3 seconds.
+    When it has finished, the whole page reloads with the new reviews."""
     from dashboard.ui import collect
     if collect.running():
-        st.caption("Fetching new reviews in the background. The page updates when it finishes.")
+        stopping = collect.status().get("state") == "stopping"
+        html(f'<div class="az-loading" role="status"><span class="az-spinner"></span>'
+             f'{"Stopping…" if stopping else "Fetching latest reviews…"}</div>')
+        st.button("Stop", key="fetch_stop", on_click=_stop_fetch, use_container_width=True,
+                  help="Press again to force it to stop.")
         return
-    if st.session_state.pop("fetch_watching", False):
-        st.rerun()
+    st.session_state["fetch_watching"] = False
+    st.rerun()
 
 
 def render_fetch(db_path: Path) -> None:
-    """The "Fetch latest reviews" button (local installs only) and its progress."""
+    """Fetch latest reviews (local installs only). After the click: loading only, plus a Stop button."""
     from dashboard.ui import collect
     ok, why = collect.available(db_path)
     if not ok:
         st.button("Fetch latest reviews", key="fetch", disabled=True, help=why, use_container_width=True)
         return
-    busy = collect.running() is not None
-    st.button("Fetch latest reviews", key="fetch", type="primary", disabled=busy, use_container_width=True,
-              on_click=_start_fetch, args=(db_path,),
-              help="Collects new Booking.com reviews for every hotel, adds them to the database and updates "
-                   "the topics. Takes a few minutes.")
     msg = st.session_state.pop("fetch_msg", None)
+    if collect.running() is not None or st.session_state.get("fetch_watching"):
+        _fetch_progress()
+        return
+    st.button("Fetch latest reviews", key="fetch", type="primary", use_container_width=True,
+              on_click=_start_fetch, args=(db_path,), help="Adds new Booking.com reviews for every hotel.")
     if msg and not msg[0]:
         st.caption(esc(msg[1]))
-    if busy or (msg and msg[0]):
-        st.session_state["fetch_watching"] = True
-        _fetch_progress()
-    else:
-        last = collect.status()
-        if last.get("state") == "done" and last.get("finished_at"):
-            st.caption(f"Last fetch finished {esc(D.to_sydney(last['finished_at']))}.")
-        elif last.get("state") == "failed":
-            st.caption(f"Last fetch failed: {esc(last.get('error', ''))}")
-
-
-def render_health_details(health: pd.DataFrame | None, no_data: dict, skipped: int,
-                          repeated: pd.DataFrame | None) -> None:
-    if health is None or health.empty:
-        st.write("No update history yet.")
         return
-    ok = pd.to_datetime(health["last_ok_at"], utc=True, errors="coerce").max()
-    st.markdown(f"**Last successful update:** {esc(D.to_sydney(ok)) if pd.notna(ok) else 'never'} (Sydney)")
-    lines = [f"{nd.name}: no reviews collected yet. {nd.reason}" for nd in no_data.values()]
-    for r in health.itertuples(index=False):
-        if r.property in no_data:
-            continue
-        if r.latest_status == "blocked":
-            lines.append(f"{r.property_name}: Booking.com blocked the last check; recent reviews may be missing.")
-        elif r.latest_status == "failed":
-            lines.append(f"{r.property_name}: the last update failed; recent reviews may be missing.")
-        if bool(r.stale):
-            lines.append(f"{r.property_name}: no successful update for more than 48 hours.")
-        if isinstance(r.coverage_note, str) and r.coverage_note:
-            lines.append(f"{r.property_name}: only part of the history is collected. {r.coverage_note}")
-    if skipped:
-        lines.append(f"{skipped:,} stored reviews were skipped (unreadable date or score).")
-    if repeated is not None and not repeated.empty:
-        for r in repeated.head(3).itertuples(index=False):
-            lines.append(f"{int(r.n)} reviews at {r.property_name} share the same score and text; they are counted.")
-    if lines:
-        html('<ul class="az-list">' + "".join(f"<li>{esc(x)}</li>" for x in lines) + "</ul>")
-    else:
-        st.write("All hotels are up to date.")
+    last = collect.status()
+    if last.get("state") == "done" and last.get("finished_at"):
+        st.caption(f"Last fetch finished {esc(D.to_sydney(last['finished_at']))}.")
+    elif last.get("state") == "stopped":
+        st.caption("Last fetch was stopped; the reviews it had already found were kept.")
+    elif last.get("state") == "failed":
+        st.caption(f"Last fetch failed: {esc(last.get('error', ''))}")
 
 
 # --- filter bar --------------------------------------------------------------------------------------------------
