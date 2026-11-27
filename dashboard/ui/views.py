@@ -80,7 +80,7 @@ def render_header(db_path: Path, health: pd.DataFrame | None, no_data: dict, ski
     with right:
         with st.popover(("⚠ " if warn else "✓ ") + label, use_container_width=True):
             render_health_details(health, no_data, skipped, repeated)
-        render_fetch(db_path)
+        render_fetch(db_path, health)
 
 
 def render_health_details(health: pd.DataFrame | None, no_data: dict, skipped: int,
@@ -151,12 +151,18 @@ def _fetch_progress() -> None:
     st.rerun()
 
 
-def render_fetch(db_path: Path) -> None:
-    """Fetch latest reviews (local installs only). After the click: loading only, plus a Stop button."""
+def render_fetch(db_path: Path, health: pd.DataFrame | None = None) -> None:
+    """Fetch latest reviews (local installs only). After the click: loading only, plus a Stop button.
+    Where fetching is not possible (a hosted copy, a snapshot) a plain line says when the data was last updated."""
     from dashboard.ui import collect
     ok, why = collect.available(db_path)
     if not ok:
-        st.button("Fetch latest reviews", key="fetch", disabled=True, help=why, use_container_width=True)
+        last = None
+        if health is not None and not health.empty:
+            last = pd.to_datetime(health["last_ok_at"], utc=True, errors="coerce").max()
+        when = esc(D.to_sydney(last)) if last is not None and pd.notna(last) else "unknown"
+        html(f'<div class="az-updated">Data last updated {when} (Sydney). '
+             'New reviews are fetched on the office computer.</div>')
         return
     msg = st.session_state.pop("fetch_msg", None)
     if collect.running() is not None or st.session_state.get("fetch_watching"):
