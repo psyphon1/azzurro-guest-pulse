@@ -22,7 +22,7 @@ from scraper.parse import parse_page
 
 CHALLENGE_WAIT_S = 30
 PAGE_DELAY_S = (2.0, 5.0)  # polite, randomised pause between pages
-MAX_PAGES = 200  # hard safety stop
+MAX_PAGES = 1000  # absolute safety valve only; the real, recorded limit is --max-pages in the collector
 
 READ_ALL = "[data-testid='fr-read-all-reviews']"
 SORTER = "[data-testid='reviews-sorter-component']"

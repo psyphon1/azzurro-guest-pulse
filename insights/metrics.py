@@ -354,7 +354,8 @@ def unreplied_reviews(df, properties=None, max_age_days=None, band=None, as_of=N
 
 # ---------------------------------------------------------------------------- data health
 STALE_AFTER = timedelta(hours=48)
-HEALTH_COLUMNS = ["property", "property_name", "stored", "last_ok_at", "latest_status", "latest_error", "stale"]
+HEALTH_COLUMNS = ["property", "property_name", "stored", "last_ok_at", "latest_status", "latest_error", "stale",
+                  "truncated", "reported_total", "coverage_note"]
 
 
 def _utc(ts) -> pd.Timestamp:
@@ -376,6 +377,11 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
     latest = _read(db_path, "SELECT property, status AS latest_status, error AS latest_error FROM scrape_runs "
                             "WHERE id IN (SELECT MAX(id) FROM scrape_runs GROUP BY property)",
                    ["property", "latest_status", "latest_error"])
+    # Did the last successful run stop at the page cap? (Missing columns on old databases read as "no".)
+    cover = _read(db_path, "SELECT property, truncated, reported_total FROM scrape_runs WHERE id IN "
+                           "(SELECT MAX(id) FROM scrape_runs WHERE status = 'ok' GROUP BY property)",
+                  ["property", "truncated", "reported_total"])
+    cover_by = {r.property: (bool(r.truncated), r.reported_total) for r in cover.itertuples()}
     slugs = list(BY_SLUG)
     for frame in (stored, ok, latest):
         slugs += [s for s in frame["property"] if s not in slugs]
@@ -386,10 +392,20 @@ def data_health(db_path, now: datetime | None = None) -> pd.DataFrame:
     for slug in slugs:
         last_ok = _utc(ok_by[slug]) if ok_by.get(slug) else pd.NaT
         status, error = latest_by.get(slug, (None, None))
+        truncated, reported = cover_by.get(slug, (False, None))
+        have = int(stored_by.get(slug, 0))
+        note = ""
+        if truncated:
+            of = f" of {int(reported):,}" if reported is not None and not pd.isna(reported) else ""
+            note = (f"Showing the newest {have:,}{of} reviews on Booking.com. Older reviews are not collected "
+                    f"(page limit), so history before the oldest one shown is missing.")
         rows.append({
             "property": slug, "property_name": _name(slug), "stored": int(stored_by.get(slug, 0)),
             "last_ok_at": last_ok, "latest_status": status, "latest_error": error,
             "stale": bool(pd.isna(last_ok) or now_ts - last_ok > STALE_AFTER),
+            "truncated": truncated,
+            "reported_total": None if reported is None or pd.isna(reported) else int(reported),
+            "coverage_note": note,
         })
     return pd.DataFrame(rows, columns=HEALTH_COLUMNS)
 

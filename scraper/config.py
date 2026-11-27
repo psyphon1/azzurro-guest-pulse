@@ -21,3 +21,8 @@ PROPERTIES = [
 BY_SLUG = {p.slug: p for p in PROPERTIES}
 
 DB_PATH = "data/reviews.db"
+
+# Booking.com returns 10 reviews per page.
+PAGE_SIZE = 10
+# Newest-first page limit per property per run (200 pages = up to 2,000 reviews). See docs/adr/002-page-cap.md.
+DEFAULT_MAX_PAGES = 200

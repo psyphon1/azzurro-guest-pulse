@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
     started_at TEXT NOT NULL, finished_at TEXT,
     status TEXT NOT NULL,
     pages INTEGER DEFAULT 0, new INTEGER DEFAULT 0, updated INTEGER DEFAULT 0,
-    rejected INTEGER DEFAULT 0, error TEXT
+    rejected INTEGER DEFAULT 0, error TEXT,
+    truncated INTEGER DEFAULT 0, reported_total INTEGER, max_pages INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS quarantine (
@@ -59,6 +60,15 @@ class ReviewStore:
         self._db = sqlite3.connect(path)
         self._db.row_factory = sqlite3.Row
         self._db.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Upgrade databases created by an older version (CREATE IF NOT EXISTS never adds columns)."""
+        have = {r["name"] for r in self._db.execute("PRAGMA table_info(scrape_runs)")}
+        for column, ddl in (("truncated", "INTEGER DEFAULT 0"), ("reported_total", "INTEGER"), ("max_pages", "INTEGER")):
+            if column not in have:
+                self._db.execute(f"ALTER TABLE scrape_runs ADD COLUMN {column} {ddl}")
+        self._db.commit()
 
     def _now(self) -> str:
         return self._clock().isoformat()
@@ -130,10 +140,13 @@ class ReviewStore:
         return cur.lastrowid
 
     def finish_run(self, run_id: int, status: str, pages: int, new: int, updated: int,
-                   rejected: int, error: str | None) -> None:
+                   rejected: int, error: str | None, truncated: bool = False,
+                   reported_total: int | None = None, max_pages: int | None = None) -> None:
         self._db.execute(
-            "UPDATE scrape_runs SET finished_at=?, status=?, pages=?, new=?, updated=?, rejected=?, error=? WHERE id=?",
-            (self._now(), status, pages, new, updated, rejected, error, run_id),
+            "UPDATE scrape_runs SET finished_at=?, status=?, pages=?, new=?, updated=?, rejected=?, error=?, "
+            "truncated=?, reported_total=?, max_pages=? WHERE id=?",
+            (self._now(), status, pages, new, updated, rejected, error,
+             int(truncated), reported_total, max_pages, run_id),
         )
         self._db.commit()
 

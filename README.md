@@ -51,7 +51,7 @@ Run the tests: `python -m pytest -q` (no network needed).
 | When | Command | What it does |
 |---|---|---|
 | Daily | `python -m scraper.run --property all --mode incremental` | Reads newest reviews first and stops at the first page with nothing new. Usually 1 page per hotel (about 20 to 30 s each). |
-| Weekly | `python -m scraper.run --property all --mode full` | Re-reads everything. Picks up edited reviews and new hotel replies on old reviews, flags reviews that disappeared, and checks the count against what Booking.com reports. |
+| Weekly | `python -m scraper.run --property all --mode full` | Re-reads up to the page limit (see below). Picks up edited reviews and new hotel replies on old reviews, flags reviews that disappeared, and checks the count against what Booking.com reports. |
 | After either | `python -m insights.pipeline --db data/reviews.db` | Tags only new or changed reviews. Safe to run repeatedly. |
 
 Nothing schedules itself. Because a visible browser is needed (see limitations), the simplest setup is a
@@ -128,6 +128,18 @@ on the live page. Details and the reasoning are in `docs/adr/001-collection-meth
 | Process killed mid-run | The next run closes stale `running` entries as `interrupted`. Ctrl+C is recorded too. Pages already saved are kept. |
 | Reviews removed from Booking | Flagged with `missing_since` after a full run, never deleted. |
 | Stale data shown as fresh | The dashboard shows last successful update per hotel and warns after 48 hours or on a failed/blocked run. |
+
+### Page limit for very large hotels
+
+Reviews are read newest first and each hotel is capped at **200 pages (up to 2,000 reviews) per run**
+(`--max-pages`, default 200). Darling Harbour has well over 2,000 reviews, so for that hotel older reviews are
+deliberately not collected. Why: recent reviews are what weekly operations need, long sessions raise the risk of
+being blocked, and a bounded run keeps daily scheduling realistic.
+
+The cap is explicit, not silent. The run ledger records `truncated`, `max_pages` and `reported_total`; the CLI
+prints a `TRUNCATED` line; the dashboard shows a "Not every review is included" notice and a Coverage column.
+A capped run does not flag older stored reviews as missing and does not raise a false drift alarm. Details and
+trade-offs: `docs/adr/002-page-cap.md`.
 
 ### Known limitations of collection
 

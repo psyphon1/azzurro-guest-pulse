@@ -197,3 +197,30 @@ def test_runs_with_topic_analysis_present(monkeypatch, demo_db):
     assert "az-chip" in page_text(at)
     at.selectbox(key="feed_topic").select("negative:noise").run()
     assert not at.exception, [e.value for e in at.exception]
+
+
+# ---------------------------------------------------------------- page cap shown to staff (Phase A)
+def capped_db(tmp_path):
+    db = build_db(tmp_path / "azzurro_demo.db")
+    store = ReviewStore(str(db), clock=lambda: datetime(2026, 11, 27, 9, 0, tzinfo=timezone.utc))
+    run = store.start_run("chateau-de-venus", "full")
+    store.finish_run(run, "ok", 200, 0, 0, 0, None, truncated=True, reported_total=3120, max_pages=200)
+    return db
+
+
+def test_page_cap_is_explained_in_the_banner_and_health_table(tmp_path, monkeypatch):
+    at = run_app(monkeypatch, capped_db(tmp_path))
+
+    assert not at.exception
+    text = page_text(at)
+    assert "Darling Harbour" in text and "page limit" in text
+    health_tables = [df.value for df in at.dataframe]
+    assert any("Coverage" in t.columns and t["Coverage"].astype(str).str.contains("page limit").any()
+               for t in health_tables)
+
+
+def test_no_cap_note_when_nothing_was_truncated(demo_db, monkeypatch):
+    at = run_app(monkeypatch, demo_db)
+
+    assert not at.exception
+    assert "page limit" not in page_text(at)

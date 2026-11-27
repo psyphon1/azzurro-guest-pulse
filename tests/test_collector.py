@@ -161,3 +161,81 @@ def test_ctrl_c_marks_the_run_interrupted_and_keeps_saved_pages(store, sample_pa
 
     assert store.latest_run(SLUG)["status"] == "interrupted"
     assert store.count(SLUG) == 3
+
+
+# ---------------------------------------------------------------- page cap (Phase A)
+def numbered_page(sample_page, page_no, size=10, total=3000):
+    base = sample_page.reviews[0]
+    reviews = [base.model_copy(update={"review_key": f"p{page_no}-r{i}"}) for i in range(size)]
+    return page_of(reviews, total=total)
+
+
+def many_pages(sample_page, count, **kw):
+    return CountingPages([numbered_page(sample_page, n, **kw) for n in range(count)])
+
+
+def test_run_stops_at_the_page_cap_and_is_marked_truncated(store, sample_page):
+    pages = many_pages(sample_page, 10)
+
+    s = collect_property(SLUG, pages, store, mode="full", max_pages=3)
+
+    assert s.status == "ok"
+    assert s.pages == 3
+    assert pages.pulled == 3          # never asked the browser for page 4
+    assert s.truncated is True
+    assert store.count(SLUG) == 30
+
+
+def test_truncated_run_does_not_mark_older_reviews_as_missing(store, sample_page):
+    store.upsert_reviews([sample_page.reviews[0].model_copy(update={"review_key": "old-review-from-page-90"})])
+
+    collect_property(SLUG, many_pages(sample_page, 10), store, mode="full", max_pages=3)
+
+    assert store.get("old-review-from-page-90")["missing_since"] is None
+
+
+def test_truncated_run_is_not_a_false_drift_alarm(store, sample_page):
+    s = collect_property(SLUG, many_pages(sample_page, 10, total=3000), store, mode="full", max_pages=3)
+
+    assert s.drift is False            # 30 collected, and 30 is exactly what a 3-page cap should give
+
+
+def test_drift_is_still_caught_inside_the_cap(store, sample_page):
+    # cap says we should have ~30 but pages only carry 5 each: parser or layout trouble, not the cap
+    s = collect_property(SLUG, many_pages(sample_page, 10, size=5, total=3000), store, mode="full", max_pages=3)
+
+    assert s.truncated is True
+    assert s.drift is True
+
+
+def test_not_truncated_when_everything_fits_under_the_cap(store, sample_page):
+    pages = CountingPages([numbered_page(sample_page, 0, size=10, total=20), numbered_page(sample_page, 1, size=10, total=20)])
+
+    s = collect_property(SLUG, pages, store, mode="full", max_pages=2)
+
+    assert s.truncated is False        # reached the cap but also collected everything Booking reports
+    assert s.drift is False
+
+
+def test_no_cap_means_no_truncation(store, sample_page):
+    s = collect_property(SLUG, many_pages(sample_page, 5, total=50), store, mode="full")
+
+    assert (s.pages, s.truncated) == (5, False)
+
+
+def test_ledger_records_why_the_run_stopped(store, sample_page):
+    collect_property(SLUG, many_pages(sample_page, 10, total=3000), store, mode="full", max_pages=3)
+
+    row = store.latest_run(SLUG)
+    assert row["truncated"] == 1
+    assert row["max_pages"] == 3
+    assert row["reported_total"] == 3000
+    assert row["status"] == "ok"
+
+
+def test_summary_explains_the_cap_in_plain_words(store, sample_page):
+    s = collect_property(SLUG, many_pages(sample_page, 10, total=3000), store, mode="full", max_pages=3)
+
+    assert "newest 30 of 3000" in s.coverage_note
+    assert "3-page limit" in s.coverage_note
+    assert collect_property(SLUG, many_pages(sample_page, 2, total=20), store, mode="full").coverage_note == ""

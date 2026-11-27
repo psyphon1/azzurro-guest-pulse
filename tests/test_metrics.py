@@ -432,7 +432,8 @@ def test_data_health_fresh_and_stale(tmp_path):
     r = store.start_run(P2, "incremental"); store.finish_run(r, "ok", 1, 1, 0, 0, None)
     h = metrics.data_health(path, now=NOW).set_index("property")
     assert list(metrics.data_health(path, now=NOW).columns) == [
-        "property", "property_name", "stored", "last_ok_at", "latest_status", "latest_error", "stale"]
+        "property", "property_name", "stored", "last_ok_at", "latest_status", "latest_error", "stale",
+        "truncated", "reported_total", "coverage_note"]
     assert h.loc[P1, "stored"] == 2 and h.loc[P2, "stored"] == 1
     assert bool(h.loc[P1, "stale"]) is False
     assert bool(h.loc[P2, "stale"]) is True
@@ -804,3 +805,46 @@ def test_insight_negative_reviews_but_none_with_comment():
     note = next(i for i in ins if "no written comment" in i.text)
     assert "6 negative reviews" in note.text and note.kind == "info"
     assert not any("mentioned" in i.text for i in ins)
+
+
+def test_data_health_explains_a_page_capped_run_in_plain_words(tmp_path):
+    path, store, t = _runs_db(tmp_path)
+    store.upsert_reviews([review(f"k{i}", P1) for i in range(30)])
+    t["now"] = datetime(2026, 3, 10, 6, 0, tzinfo=timezone.utc)
+    r = store.start_run(P1, "full")
+    store.finish_run(r, "ok", 3, 30, 0, 0, None, truncated=True, reported_total=3000, max_pages=3)
+
+    h = metrics.data_health(path, now=NOW).set_index("property")
+
+    assert bool(h.loc[P1, "truncated"]) is True
+    assert h.loc[P1, "reported_total"] == 3000
+    note = h.loc[P1, "coverage_note"]
+    assert "30 of 3,000" in note and "newest" in note.lower() and "page limit" in note
+    assert h.loc[P2, "coverage_note"] == ""          # untouched property: no note
+
+
+def test_data_health_complete_run_has_no_coverage_note(tmp_path):
+    path, store, t = _runs_db(tmp_path)
+    store.upsert_reviews([review("a", P1)])
+    r = store.start_run(P1, "full")
+    store.finish_run(r, "ok", 1, 1, 0, 0, None, truncated=False, reported_total=1, max_pages=200)
+
+    h = metrics.data_health(path, now=NOW).set_index("property")
+
+    assert bool(h.loc[P1, "truncated"]) is False
+    assert h.loc[P1, "coverage_note"] == ""
+
+
+def test_data_health_works_on_a_database_from_before_the_page_cap_existed(tmp_path):
+    import sqlite3
+    path = str(tmp_path / "legacy.db")
+    con = sqlite3.connect(path)
+    con.executescript("""CREATE TABLE reviews (review_key TEXT PRIMARY KEY, property TEXT, rating REAL, review_date TEXT);
+        CREATE TABLE scrape_runs (id INTEGER PRIMARY KEY, property TEXT, mode TEXT, started_at TEXT, finished_at TEXT,
+            status TEXT, pages INTEGER, new INTEGER, updated INTEGER, rejected INTEGER, error TEXT);
+        INSERT INTO scrape_runs VALUES (1,'olympic-paddington','full','2026-03-09T00:00:00+00:00','2026-03-09T00:01:00+00:00','ok',14,133,0,0,NULL);""")
+    con.commit(); con.close()
+
+    h = metrics.data_health(path, now=NOW).set_index("property")
+
+    assert h.loc["olympic-paddington", "coverage_note"] == ""

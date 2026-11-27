@@ -93,6 +93,14 @@ def render_banner(db_path: Path, health: pd.DataFrame) -> None:
              f'Last successful update: {esc(when)} (Sydney time).<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
     else:
         html(f'<div class="az-fresh"><b>&#10003; Data is up to date.</b> Last successful update: {esc(when)} (Sydney time).</div>')
+    # Hotels with more reviews than the collection page limit: say so plainly, never silently show partial history.
+    notes = [f"{r.property_name}: {r.coverage_note}" for r in health.itertuples(index=False)
+             if isinstance(r.coverage_note, str) and r.coverage_note]
+    if notes:
+        items = "".join(f"<li>{esc(n)}</li>" for n in notes)
+        html(f'<div class="az-fresh"><b>&#8505; Not every review is included.</b> To keep collection fast and polite we only '
+             f'read the newest reviews first. Recent weeks are complete; long-term history is not.'
+             f'<ul style="margin:.3rem 0 0 1.1rem">{items}</ul></div>')
 
 
 # 2. Insights --------------------------------------------------------------------------------
@@ -390,6 +398,7 @@ def render_health(health: pd.DataFrame, feed_df: pd.DataFrame | None, chips: dic
             "Last successful update (Sydney)": [D.to_sydney(x) for x in health["last_ok_at"]],
             "Latest attempt": [_STATUS_WORDS.get(s, "Never run") if s else "Never run" for s in health["latest_status"]],
             "Up to date?": ["No: over 48 hours old" if s else "Yes" for s in health["stale"].astype(bool)],
+            "Coverage": [c if isinstance(c, str) and c else "All reviews Booking.com shows" for c in health["coverage_note"]],
             "Problem details": [e if isinstance(e, str) and e else "" for e in health["latest_error"]],
         })
         st.dataframe(t, hide_index=True, use_container_width=True)

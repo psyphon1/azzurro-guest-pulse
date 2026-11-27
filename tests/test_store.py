@@ -104,3 +104,25 @@ def test_unfinished_runs_are_closed_as_interrupted(store):
     assert row["id"] == old and row["status"] == "interrupted"
     assert "did not finish" in row["error"]
     assert store.latest_run("venus-surry-hills")["status"] == "running"  # other property untouched
+
+
+def test_old_databases_are_upgraded_without_losing_data(tmp_path):
+    import sqlite3
+
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.executescript("""
+        CREATE TABLE scrape_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, property TEXT NOT NULL, mode TEXT NOT NULL,
+            started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, pages INTEGER DEFAULT 0,
+            new INTEGER DEFAULT 0, updated INTEGER DEFAULT 0, rejected INTEGER DEFAULT 0, error TEXT);
+        INSERT INTO scrape_runs (property, mode, started_at, status, pages, new) VALUES ('olympic-paddington','full','2026-11-27T00:00:00','ok',14,133);
+    """)
+    old.commit(); old.close()
+
+    store = ReviewStore(path)
+
+    row = store.latest_run("olympic-paddington")
+    assert (row["pages"], row["new"], row["truncated"]) == (14, 133, 0)
+    run = store.start_run("olympic-paddington", "full")
+    store.finish_run(run, "ok", 3, 30, 0, 0, None, truncated=True, reported_total=3000, max_pages=3)
+    assert store.latest_run("olympic-paddington")["max_pages"] == 3
