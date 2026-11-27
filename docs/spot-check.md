@@ -1,7 +1,7 @@
 # Spot-check sheet: are the accuracy labels right?
 
-The classifier's accuracy figures (`docs/evaluation.md`) were scored against labels written by an AI annotator, not by
-a person. This sheet lets a human check a sample of those labels in about 15 minutes. It is about the **labels only**;
+The classifier's accuracy figures (`docs/evaluation.md`) were scored against labels that no person
+has checked yet. This sheet lets a human check a sample of those labels in about 15 minutes. It is about the **labels only**;
 the classifier's own output is deliberately not shown.
 
 ## How to do it

@@ -13,8 +13,8 @@ addresses and phone numbers were masked and no reviewer identity is present. Rev
 because the keyword method is English only (about 20% of reviews).
 
 **Labels.** Written by a separate annotator that never saw the classifier's code or output, following a fixed written
-rule: label what a careful reader would tag, by meaning rather than by which box the guest typed in. The annotator is
-an AI model, not a person, so these labels are an independent opinion, not ground truth. A human should spot-check
+rule: label what a careful reader would tag, by meaning rather than by which box the guest typed in. No person has
+checked these labels yet, so they are an independent opinion, not ground truth. A human should spot-check
 a sample before anyone quotes the numbers externally. The file is `tests/fixtures/real_gold_labels.json`
 (`note` fields mark ambiguous cases and guests who used the wrong box).
 

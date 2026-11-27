@@ -266,7 +266,7 @@ without changing anything downstream.
 
 Scored against 100 real reviews labelled independently (a separate annotator that never saw the classifier), on a
 held-out half that was not used for tuning: **precision 0.84, recall 0.76, F1 0.80**. Weakest topic: room condition
-(F1 0.65). Details, the tuning that was done and the caveats (100 reviews, English only, one AI annotator, no Central
+(F1 0.65). Details, the tuning that was done and the caveats (100 reviews, English only, one annotator, no Central
 Sydney reviews) are in `docs/evaluation.md`. The labels have not been checked by a person yet: `docs/spot-check.md` is a
 sheet of 20 cases that takes about 15 minutes. An earlier self-labelled set scored higher (F1 0.95) and
 should be ignored as evidence of real accuracy.

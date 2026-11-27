@@ -115,8 +115,8 @@ real data; not met = does not exist yet.
 3. **No public demo URL.** Nothing is deployed (`docs/deploy.md` describes the steps). The sample files now exist, so a
    reviewer can run the dashboard on real data locally with `REVIEWS_DB=data/sample/reviews_sample.db`, but there is no
    link to open. `data/sample/reviews_sample.db` is git-ignored and must be added deliberately (`git add -f`).
-4. **Insight accuracy rests on an AI-labelled, English-only evaluation.** F1 0.80 comes from 50 held-out reviews labelled by
-   an AI annotator, none from Central Sydney; about half of the stored reviews carry no tag (rating-only, not English, or no topic mentioned);
+4. **Insight accuracy rests on an unverified, English-only evaluation.** F1 0.80 comes from 50 held-out reviews labelled by
+   one annotator and not yet checked by a person, none from Central Sydney; about half of the stored reviews carry no tag (rating-only, not English, or no topic mentioned);
    room condition and check-in are weak. `docs/spot-check.md` is ready for a human to check 20 labels in about 15 minutes;
    it has not been done.
 5. **Python version and usability gaps.** `scripts/export_sample.py` needs Python 3.13 or newer (it failed on 3.11 before
