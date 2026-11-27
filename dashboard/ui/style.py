@@ -47,6 +47,17 @@ h3 {{ font-size: 16px !important; font-weight: 650 !important; }}
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {{ color: {MUTED} !important;
   font-size: {_T["meta"]}px !important; opacity: 1 !important; }}
 :focus-visible {{ outline: 2px solid {TEAL} !important; outline-offset: 2px; }}
+/* Primary buttons (Apply filters): white text on the accent blue, darker on hover. */
+[data-testid="stBaseButton-primaryFormSubmit"], [data-testid="stBaseButton-primary"] {{
+  background: {TEAL} !important; border-color: {TEAL} !important; }}
+[data-testid="stBaseButton-primaryFormSubmit"] *, [data-testid="stBaseButton-primary"] * {{
+  color: #FFFFFF !important; font-weight: 650 !important; }}
+[data-testid="stBaseButton-primaryFormSubmit"]:hover, [data-testid="stBaseButton-primary"]:hover {{
+  background: #164F8C !important; border-color: #164F8C !important; }}
+[data-testid="stBaseButton-secondaryFormSubmit"], [data-testid="stBaseButton-secondary"] {{
+  background: {CARD} !important; border: 1px solid #B7C3CC !important; }}
+[data-testid="stBaseButton-secondaryFormSubmit"] *, [data-testid="stBaseButton-secondary"] * {{
+  color: {INK} !important; font-weight: 600 !important; }}
 
 /* Sticky filter bar and section nav */
 .st-key-az_bar {{ position: sticky; top: 3.75rem; z-index: 990; background: {PAPER}; padding: {_S}px 0 {_S}px 0;
