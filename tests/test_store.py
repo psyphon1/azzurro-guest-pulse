@@ -126,3 +126,21 @@ def test_old_databases_are_upgraded_without_losing_data(tmp_path):
     run = store.start_run("olympic-paddington", "full")
     store.finish_run(run, "ok", 3, 30, 0, 0, None, truncated=True, reported_total=3000, max_pages=3)
     assert store.latest_run("olympic-paddington")["max_pages"] == 3
+
+
+def test_ledger_has_stop_reason_and_date_window_columns_even_on_upgraded_databases(tmp_path):
+    import sqlite3
+    path = str(tmp_path / "v2.db")
+    old = sqlite3.connect(path)
+    old.executescript("""CREATE TABLE scrape_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, property TEXT NOT NULL, mode TEXT NOT NULL,
+        started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, pages INTEGER DEFAULT 0, new INTEGER DEFAULT 0,
+        updated INTEGER DEFAULT 0, rejected INTEGER DEFAULT 0, error TEXT, truncated INTEGER DEFAULT 0,
+        reported_total INTEGER, max_pages INTEGER);""")
+    old.commit(); old.close()
+
+    store = ReviewStore(path)
+    run = store.start_run("chateau-de-venus", "full")
+    store.finish_run(run, "ok", 40, 400, 0, 0, None, truncated=True, stop_reason="date_window", since_days=365)
+
+    row = store.latest_run("chateau-de-venus")
+    assert (row["stop_reason"], row["since_days"]) == ("date_window", 365)

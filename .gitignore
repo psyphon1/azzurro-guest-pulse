@@ -12,5 +12,8 @@ __pycache__/
 # local data (sample data is committed on purpose, see data/sample_*)
 data/raw/
 data/*.db-journal
+# live scraped databases are never committed by accident; a deliberate sample lives in data/sample/
+data/*.db
+!data/sample/
 .DS_Store
 data/demo.db

@@ -129,6 +129,13 @@ on the live page. Details and the reasoning are in `docs/adr/001-collection-meth
 | Reviews removed from Booking | Flagged with `missing_since` after a full run, never deleted. |
 | Stale data shown as fresh | The dashboard shows last successful update per hotel and warns after 48 hours or on a failed/blocked run. |
 
+### Date window and page limit
+
+Reviews are read newest first. A run stops at the first page that is entirely older than **365 days**
+(`--since-days`, `--no-date-window` to disable), because weekly operations only needs recent reviews. Pauses of
+60 to 120 seconds separate hotels (`--pause`), and a blocked hotel is retried once after a few minutes. See
+`docs/adr/003-date-window-and-throttling.md` for what happened in the first runs and why.
+
 ### Page limit for very large hotels
 
 Reviews are read newest first and each hotel is capped at **200 pages (up to 2,000 reviews) per run**
