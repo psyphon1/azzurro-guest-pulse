@@ -1,0 +1,172 @@
+{
+  "data": {
+    "reviewListFrontend": {
+      "__typename": "ReviewListFrontendResult",
+      "reviewsCount": 74,
+      "reviewScoreFilter": [
+        {"name": "All (133)", "value": "ALL", "count": 133}
+      ],
+      "ratingScores": [
+        {"name": "hotel_clean", "translation": "Cleanliness", "value": 6.90957260131836, "count": 127},
+        {"name": "hotel_staff", "translation": "Staff", "value": 7.73954391479492, "count": 126}
+      ],
+      "reviewCard": [
+        {
+          "__typename": "ReviewCard",
+          "reviewUrl": "b5dd03c083f5278b",
+          "reviewScore": 5.0,
+          "reviewedDate": 1790036404,
+          "helpfulVotesCount": 0,
+          "textDetails": {
+            "title": "Will not stay again.",
+            "positiveText": "The price and location were good.",
+            "negativeText": "The lobby looked like an unwelcoming storage room. There was clearly a sewerage issue in the bathrooms that made the smell in the hallway unbearable. The kitchen area was grubby and poorly equipped.",
+            "lang": "en",
+            "textTrivialFlag": 0
+          },
+          "partnerReply": {"reply": "Thank you for taking the time to provide such detailed feedback.\n\nWe apologise for the state of the lobby and kitchen areas."},
+          "guestDetails": {
+            "username": "TestGuestOne",
+            "avatarUrl": "https://example.invalid/avatar-one.png",
+            "countryName": "Australia",
+            "countryCode": "au",
+            "guestTypeTranslation": "Solo traveller",
+            "anonymous": false
+          },
+          "bookingDetails": {
+            "numNights": 1,
+            "checkinDate": "2026-09-17",
+            "checkoutDate": "2026-09-18",
+            "customerType": "SOLO_TRAVELLERS",
+            "stayStatus": "stayed",
+            "roomType": {"id": "1621129103", "name": "Standard Double Room with Private External Bathroom"}
+          }
+        },
+        {
+          "__typename": "ReviewCard",
+          "reviewUrl": "cdea2877d7771ee9",
+          "reviewScore": 6.0,
+          "reviewedDate": 1788522865,
+          "helpfulVotesCount": 0,
+          "textDetails": {
+            "title": "Comfortable stay but think it was in the expensive side for what you got",
+            "positiveText": "The location was good for public transportation",
+            "negativeText": "There was a kettle, but no cups and cockroaches, which I did inform the virtual receptionist about. It’s a little noisy when people have walked past your room.",
+            "lang": "en",
+            "textTrivialFlag": 0
+          },
+          "partnerReply": {"reply": "Thank you for your feedback. We&#39;re glad you found our location convenient. We&#39;re sorry about the cockroaches."},
+          "guestDetails": {
+            "username": "TestGuestTwo",
+            "avatarUrl": "https://example.invalid/avatar-two.png",
+            "countryName": "United Kingdom",
+            "countryCode": "gb",
+            "guestTypeTranslation": "Solo traveller",
+            "anonymous": false
+          },
+          "bookingDetails": {
+            "numNights": 4,
+            "checkinDate": "2026-08-30",
+            "checkoutDate": "2026-09-03",
+            "customerType": "SOLO_TRAVELLERS",
+            "stayStatus": "stayed",
+            "roomType": {"id": "1621129101", "name": "Superior Double Room (Ensuite)"}
+          }
+        },
+        {
+          "__typename": "ReviewCard",
+          "reviewUrl": "682d57bc349ad1f3",
+          "reviewScore": 6.0,
+          "reviewedDate": 1787705022,
+          "helpfulVotesCount": 1,
+          "textDetails": {
+            "title": null,
+            "positiveText": "Staff gave all the needed information to check in and get into the room.",
+            "negativeText": "The shower was really dirty and needs a good clean. The toilet paper holder was broken.",
+            "lang": "en",
+            "textTrivialFlag": 0
+          },
+          "partnerReply": {"reply": "We are very sorry that the cleanliness of the bathroom did not meet our standards."},
+          "guestDetails": {
+            "username": "TestGuestThree",
+            "avatarUrl": "https://example.invalid/avatar-three.png",
+            "countryName": "Australia",
+            "countryCode": "au",
+            "guestTypeTranslation": "Solo traveller",
+            "anonymous": false
+          },
+          "bookingDetails": {
+            "numNights": 2,
+            "checkinDate": "2026-08-23",
+            "checkoutDate": "2026-08-25",
+            "customerType": "SOLO_TRAVELLERS",
+            "stayStatus": "stayed",
+            "roomType": {"id": "1621129101", "name": "Superior Double Room (Ensuite)"}
+          }
+        },
+        {
+          "__typename": "ReviewCard",
+          "reviewUrl": "86be75f8e32e4242",
+          "reviewScore": 1.0,
+          "reviewedDate": 1794865465,
+          "helpfulVotesCount": 1,
+          "textDetails": {
+            "title": "NEVER AGAIN.  THIRD WORLD COUNTRY EXPERIENCE . NO CARE FACTOR .",
+            "positiveText": "GOING OUT THE DOOR.",
+            "negativeText": "NO AIR CONDITIONING, NO CUPS, NO MILK AND THEY DID NOT CARE",
+            "lang": "en",
+            "textTrivialFlag": 0
+          },
+          "partnerReply": null,
+          "guestDetails": {
+            "username": "TestGuestFour",
+            "avatarUrl": "https://example.invalid/avatar-four.png",
+            "countryName": "Australia",
+            "countryCode": "au",
+            "guestTypeTranslation": "Solo traveller",
+            "anonymous": false
+          },
+          "bookingDetails": {
+            "numNights": 2,
+            "checkinDate": "2026-11-14",
+            "checkoutDate": "2026-11-16",
+            "customerType": "SOLO_TRAVELLERS",
+            "stayStatus": "stayed",
+            "roomType": {"id": "1621129105", "name": "Standard Double Room (Ensuite)"}
+          }
+        },
+        {
+          "__typename": "ReviewCard",
+          "reviewUrl": "0792d4af495282ed",
+          "reviewScore": 8.0,
+          "reviewedDate": 1794805708,
+          "helpfulVotesCount": 0,
+          "textDetails": {
+            "title": null,
+            "positiveText": "great location",
+            "negativeText": "had a little problem with the robo check in but it took time and I worked it out.",
+            "lang": "xu",
+            "textTrivialFlag": 0
+          },
+          "partnerReply": null,
+          "guestDetails": {
+            "username": "TestGuestFive",
+            "avatarUrl": "https://example.invalid/avatar-five.png",
+            "countryName": "Australia",
+            "countryCode": "au",
+            "guestTypeTranslation": "Solo traveller",
+            "anonymous": false
+          },
+          "bookingDetails": {
+            "numNights": 1,
+            "checkinDate": "2026-10-20",
+            "checkoutDate": "2026-10-21",
+            "customerType": "SOLO_TRAVELLERS",
+            "stayStatus": "stayed",
+            "roomType": {"id": "1621129101", "name": "Superior Double Room (Ensuite)"}
+          }
+        }
+      ]
+    }
+  }
+}
