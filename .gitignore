@@ -1,0 +1,15 @@
+# secrets
+.env
+*.pem
+cookies*.json
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# local data (sample data is committed on purpose, see data/sample_*)
+data/raw/
+data/*.db-journal
+.DS_Store

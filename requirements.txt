@@ -1,0 +1,8 @@
+httpx
+selectolax
+pydantic
+tenacity
+streamlit
+pandas
+plotly
+pytest
