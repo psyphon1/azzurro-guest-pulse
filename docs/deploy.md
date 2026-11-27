@@ -52,10 +52,8 @@ Before you push, run `git status` and read the list of files.
 2. Go to share.streamlit.io, sign in with GitHub, press **New app**.
 3. Choose the repository and branch.
 4. **Main file path:** `dashboard/app.py`
-5. Open **Advanced settings** and pick a **Python version**. This project was tested on Python 3.15. If the host
-   does not offer that, choose the newest it offers (3.11 or later is needed by the pandas version in the
-   requirements). Whether the app runs on versions other than 3.15 was **not verified**; if the build fails, the
-   build log says which package could not be installed.
+5. Open **Advanced settings** and pick **Python 3.13**. **[verified]**: the app was run on Python 3.13 in a clean
+   environment with only `dashboard/requirements.txt` installed (no Playwright), every section loaded with no errors.
 6. **Requirements file.** Use `dashboard/requirements.txt`. It lists only four packages (streamlit, pandas,
    plotly, pydantic). Do **not** use the top-level `requirements.txt`: it also lists Playwright (the collector's
    browser tool) and pytest, which make the build large and slow and are not needed. To my knowledge the host looks
@@ -125,3 +123,9 @@ dashboard shows live data and no sample banner.
 * **A new snapshot does not show up**: the app caches data for up to 5 minutes; reload the page, or reboot the
   app from the host's menu.
 * **The page looks unstyled or shows an old design**: hard-refresh the browser.
+
+## 7. Current state (submission)
+
+`data/reviews.db` (the full collection) is committed, so a hosted copy shows the real data, not the sample. The
+"Fetch latest reviews" button is shown greyed out on a host: collecting needs Playwright and a real browser, which
+only the office computer has. Fetch there, then commit and push `data/reviews.db`; the host redeploys on its own.
